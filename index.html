@@ -1,0 +1,2491 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>نظام القيود المحاسبية في ERP | المبيعات، المشتريات، المرتجعات، التكلفة والمخزون</title>
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- Google Fonts: Cairo & Tajawal -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800&display=swap" rel="stylesheet">
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Tajawal', 'Cairo', 'sans-serif'],
+            display: ['Cairo', 'sans-serif'],
+          },
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+              900: '#1e3a8a',
+            },
+            erp: {
+              sales: '#2563eb',
+              purchases: '#059669',
+              invoices: '#d97706',
+              returns: '#dc2626',
+              cogs: '#7c3aed',
+              inventory: '#0891b2'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      font-family: 'Tajawal', 'Cairo', sans-serif;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+    
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar { width: 7px; height: 7px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    .dark ::-webkit-scrollbar-thumb { background: #334155; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    /* Custom Gradients */
+    .bg-gradient-sales { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); }
+    .bg-gradient-purchases { background: linear-gradient(135deg, #065f46 0%, #10b981 100%); }
+    .bg-gradient-returns { background: linear-gradient(135deg, #991b1b 0%, #ef4444 100%); }
+    .bg-gradient-cogs { background: linear-gradient(135deg, #581c87 0%, #8b5cf6 100%); }
+    .bg-gradient-inventory { background: linear-gradient(135deg, #0e7490 0%, #06b6d4 100%); }
+    .bg-gradient-invoices { background: linear-gradient(135deg, #9a3412 0%, #f97316 100%); }
+    .bg-gradient-glass {
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .dark .bg-gradient-glass {
+      background: rgba(15, 23, 42, 0.85);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    /* Modal Backdrop */
+    .modal-backdrop {
+      background: rgba(15, 23, 42, 0.65);
+      backdrop-filter: blur(6px);
+    }
+
+    /* Navigation Active Indicator */
+    .nav-item.active {
+      background: linear-gradient(90deg, #1e40af, #3b82f6);
+      color: #ffffff !important;
+      box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+    }
+    .nav-item.active i {
+      color: #ffffff !important;
+    }
+    .nav-item:hover:not(.active) {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+    .dark .nav-item:hover:not(.active) {
+      background: #1e293b;
+      color: #f8fafc;
+    }
+
+    /* Print Style for Journal Voucher */
+    @media print {
+      body * {
+        visibility: hidden;
+      }
+      #printArea, #printArea * {
+        visibility: visible;
+      }
+      #printArea {
+        position: absolute;
+        left: 0;
+        top: 0;
+        width: 100%;
+        margin: 0;
+        padding: 20px;
+        background: white !important;
+        color: black !important;
+      }
+      .no-print {
+        display: none !important;
+      }
+    }
+  </style>
+</head>
+<body class="bg-slate-100 text-slate-800 dark:bg-slate-950 dark:text-slate-100 antialiased min-h-screen flex flex-col selection:bg-blue-600 selection:text-white">
+
+  <!-- Application Shell -->
+  <div class="flex flex-1 min-h-screen relative overflow-x-hidden">
+    
+    <!-- SIDEBAR -->
+    <aside id="sidebar" class="w-72 bg-white dark:bg-slate-900 border-l border-slate-200 dark:border-slate-800 flex flex-col fixed inset-y-0 right-0 z-30 transition-all duration-300">
+      
+      <!-- Brand Header -->
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-600 via-indigo-600 to-blue-700 flex items-center justify-center shadow-lg shadow-blue-500/20 text-white font-bold text-xl ring-2 ring-blue-500/30">
+            <i data-lucide="calculator" class="w-6 h-6"></i>
+          </div>
+          <div>
+            <h1 class="font-black text-lg text-slate-900 dark:text-white tracking-tight flex items-center gap-1.5 font-display">
+              ERP المحاسبي
+              <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 font-mono font-bold">PRO</span>
+            </h1>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">دليل القيود والحركات المالية</p>
+          </div>
+        </div>
+        <button id="closeSidebarBtn" class="lg:hidden p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Quick System Status Badge -->
+      <div class="px-5 py-3 bg-slate-50 dark:bg-slate-900/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between text-xs">
+        <span class="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 font-semibold">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          القيود متوازنة ومقفلة
+        </span>
+        <span class="font-mono text-slate-500 dark:text-slate-400 font-medium">سنة 2026</span>
+      </div>
+
+      <!-- Navigation Links -->
+      <nav class="flex-1 p-4 space-y-1.5 overflow-y-auto">
+        <div class="px-3 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          الوحدات والعمليات
+        </div>
+
+        <a href="#dashboard" onclick="switchTab('dashboard')" class="nav-item active flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="layout-dashboard" class="w-4 h-4 text-blue-600 group-hover:text-blue-500"></i>
+            <span>لوحة التحكم الرئيسية</span>
+          </div>
+          <span class="text-xs px-2 py-0.5 rounded-full bg-white/20 text-white font-mono font-bold">الكل</span>
+        </a>
+
+        <a href="#sales" onclick="switchTab('sales')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="shopping-cart" class="w-4 h-4 text-blue-500"></i>
+            <span>قيود المبيعات</span>
+          </div>
+          <span class="badge-count text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 font-mono font-bold" id="badgeSalesCount">0</span>
+        </a>
+
+        <a href="#purchases" onclick="switchTab('purchases')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="truck" class="w-4 h-4 text-emerald-500"></i>
+            <span>قيود المشتريات</span>
+          </div>
+          <span class="badge-count text-xs px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300 font-mono font-bold" id="badgePurchasesCount">0</span>
+        </a>
+
+        <a href="#returns" onclick="switchTab('returns')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="rotate-ccw" class="w-4 h-4 text-red-500"></i>
+            <span>قيود المرتجعات</span>
+          </div>
+          <span class="badge-count text-xs px-2 py-0.5 rounded-full bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300 font-mono font-bold" id="badgeReturnsCount">0</span>
+        </a>
+
+        <a href="#cogs" onclick="switchTab('cogs')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="trending-down" class="w-4 h-4 text-purple-500"></i>
+            <span>تكلفة البضاعة المباعة (COGS)</span>
+          </div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300 font-bold">IFRS</span>
+        </a>
+
+        <a href="#inventory" onclick="switchTab('inventory')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="boxes" class="w-4 h-4 text-cyan-500"></i>
+            <span>المخزون والتسويات الجردية</span>
+          </div>
+          <span class="text-[10px] px-1.5 py-0.5 rounded bg-cyan-100 dark:bg-cyan-900/50 text-cyan-700 dark:text-cyan-300 font-bold">مستمر/دوري</span>
+        </a>
+
+        <div class="pt-4 px-3 py-1.5 text-[11px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider">
+          الأدوات والتقارير
+        </div>
+
+        <a href="#simulator" onclick="switchTab('simulator')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="sparkles" class="w-4 h-4 text-amber-500"></i>
+            <span class="text-amber-600 dark:text-amber-400 font-bold">محاكي القيود الذكي</span>
+          </div>
+          <span class="text-[10px] px-2 py-0.5 rounded-full bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 font-bold">توليد فوري</span>
+        </a>
+
+        <a href="#ledger" onclick="switchTab('ledger')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="book-open" class="w-4 h-4 text-indigo-500"></i>
+            <span>دفتر الأستاذ العام وميزان المراجعة</span>
+          </div>
+        </a>
+
+        <a href="#guide" onclick="switchTab('guide')" class="nav-item flex items-center justify-between px-3.5 py-2.5 rounded-xl font-semibold text-slate-700 dark:text-slate-300 transition group text-sm">
+          <div class="flex items-center gap-3">
+            <i data-lucide="graduation-cap" class="w-4 h-4 text-emerald-500"></i>
+            <span>الموسوعة وقواعد القيود</span>
+          </div>
+        </a>
+      </nav>
+
+      <!-- User / System Info Footer -->
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+        <div class="flex items-center gap-3 p-2.5 rounded-xl bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700/60 shadow-sm">
+          <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-bold text-sm shadow">
+            ERP
+          </div>
+          <div class="flex-1 min-w-0">
+            <p class="font-bold text-xs text-slate-800 dark:text-slate-200 truncate">نظام الحسابات العامة</p>
+            <p class="text-[11px] text-slate-500 dark:text-slate-400 truncate">معيار IFRS / ضريبة VAT 15%</p>
+          </div>
+          <button onclick="toggleDarkMode()" title="تبديل الوضع الليلي" class="p-1.5 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition">
+            <i data-lucide="moon" class="w-4 h-4 dark:hidden"></i>
+            <i data-lucide="sun" class="w-4 h-4 hidden dark:block text-amber-400"></i>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- MAIN CONTENT AREA -->
+    <div class="flex-1 flex flex-col min-w-0 lg:mr-72 transition-all duration-300">
+      
+      <!-- TOP STICKY NAVBAR -->
+      <header class="bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0 z-20 px-4 sm:px-8 py-3.5">
+        <div class="flex items-center justify-between gap-4">
+          
+          <div class="flex items-center gap-3">
+            <button id="openSidebarBtn" class="lg:hidden p-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-300">
+              <i data-lucide="menu" class="w-5 h-5"></i>
+            </button>
+            <div>
+              <h2 id="topBarTitle" class="text-xl sm:text-2xl font-black text-slate-900 dark:text-white font-display">
+                لوحة القيود والعمليات المالية
+              </h2>
+              <p id="topBarSubtitle" class="text-xs text-slate-500 dark:text-slate-400 mt-0.5 hidden sm:block">
+                متابعة حركة فواتير المبيعات، المشتريات، المرتجعات، وتكلفة البضاعة والمخزون
+              </p>
+            </div>
+          </div>
+
+          <!-- Actions & Search -->
+          <div class="flex items-center gap-2 sm:gap-3">
+            
+            <!-- Global Live Search -->
+            <div class="relative hidden md:block">
+              <i data-lucide="search" class="w-4 h-4 text-slate-400 absolute right-3.5 top-1/2 -translate-y-1/2 pointer-events-none"></i>
+              <input id="searchInput" type="text" placeholder="بحث برقم القيد، الحساب، أو البيان..." 
+                class="pr-10 pl-4 py-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs sm:text-sm w-48 sm:w-64 focus:w-80 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white dark:focus:bg-slate-900 transition-all text-slate-800 dark:text-slate-100 placeholder:text-slate-400">
+            </div>
+
+            <!-- Currency Selector -->
+            <div class="flex items-center bg-slate-100 dark:bg-slate-800 rounded-xl p-1 border border-slate-200 dark:border-slate-700 text-xs font-bold text-slate-600 dark:text-slate-300">
+              <button onclick="setCurrency('SAR')" id="currSAR" class="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm transition">ر.س (SAR)</button>
+              <button onclick="setCurrency('EGP')" id="currEGP" class="px-2.5 py-1 rounded-lg hover:text-blue-600 transition">ج.م (EGP)</button>
+              <button onclick="setCurrency('USD')" id="currUSD" class="px-2.5 py-1 rounded-lg hover:text-blue-600 transition">$ (USD)</button>
+            </div>
+
+            <!-- Quick Simulator Launcher -->
+            <button onclick="switchTab('simulator')" class="hidden sm:flex items-center gap-2 px-3.5 py-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white rounded-xl text-xs sm:text-sm font-bold shadow-md shadow-amber-500/20 transition transform active:scale-95">
+              <i data-lucide="sparkles" class="w-4 h-4"></i>
+              <span>محاكي القيود</span>
+            </button>
+
+            <!-- Export Excel/CSV -->
+            <button onclick="exportEntriesToCSV()" title="تصدير القيود بصيغة Excel/CSV" class="p-2 sm:px-3 sm:py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl text-xs font-bold border border-slate-200 dark:border-slate-700 transition flex items-center gap-1.5">
+              <i data-lucide="download" class="w-4 h-4 text-emerald-600"></i>
+              <span class="hidden sm:inline">تصدير CSV</span>
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <!-- PAGE WRAPPER / CONTAINER -->
+      <main class="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto space-y-8">
+        
+        <!-- ========================================== -->
+        <!-- TAB 1: EXECUTIVE DASHBOARD (لوحة التحكم) -->
+        <!-- ========================================== -->
+        <section id="tab-dashboard" class="tab-content space-y-8">
+          
+          <!-- Key Financial Metric Cards (6 KPI Cards) -->
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+            
+            <!-- 1. Sales -->
+            <div class="bg-gradient-sales rounded-2xl p-4 text-white shadow-lg shadow-blue-500/10 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-blue-100 font-semibold">إجمالي المبيعات</span>
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <i data-lucide="shopping-cart" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-xl font-black font-mono tracking-tight" id="kpiSales">0</p>
+                <p class="text-[11px] text-blue-100 mt-1 flex items-center gap-1 font-medium">
+                  <i data-lucide="trending-up" class="w-3 h-3 text-emerald-300"></i>
+                  إيراد نشاط المبيعات
+                </p>
+              </div>
+            </div>
+
+            <!-- 2. Purchases -->
+            <div class="bg-gradient-purchases rounded-2xl p-4 text-white shadow-lg shadow-emerald-500/10 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-emerald-100 font-semibold">إجمالي المشتريات</span>
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <i data-lucide="truck" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-xl font-black font-mono tracking-tight" id="kpiPurchases">0</p>
+                <p class="text-[11px] text-emerald-100 mt-1 flex items-center gap-1 font-medium">
+                  <i data-lucide="arrow-down-left" class="w-3 h-3 text-emerald-200"></i>
+                  مشتريات بضاعة للمستودعات
+                </p>
+              </div>
+            </div>
+
+            <!-- 3. COGS (تكلفة البضاعة المباعة) -->
+            <div class="bg-gradient-cogs rounded-2xl p-4 text-white shadow-lg shadow-purple-500/10 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-purple-100 font-semibold">تكلفة البضاعة المباعة</span>
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <i data-lucide="trending-down" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-xl font-black font-mono tracking-tight" id="kpiCOGS">0</p>
+                <p class="text-[11px] text-purple-100 mt-1 flex items-center gap-1 font-medium">
+                  <span id="kpiMarginBadge" class="bg-white/20 px-1 py-0.5 rounded text-[10px] font-bold">هامش 38%</span>
+                </p>
+              </div>
+            </div>
+
+            <!-- 4. Inventory Value (المخزون السلعي) -->
+            <div class="bg-gradient-inventory rounded-2xl p-4 text-white shadow-lg shadow-cyan-500/10 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-cyan-100 font-semibold">رصيد المخزون الحالي</span>
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <i data-lucide="boxes" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-xl font-black font-mono tracking-tight" id="kpiInventory">0</p>
+                <p class="text-[11px] text-cyan-100 mt-1 flex items-center gap-1 font-medium">
+                  <i data-lucide="check-circle" class="w-3 h-3 text-cyan-200"></i>
+                  أصل متداول مقيّم
+                </p>
+              </div>
+            </div>
+
+            <!-- 5. Returns (المرتجعات) -->
+            <div class="bg-gradient-returns rounded-2xl p-4 text-white shadow-lg shadow-red-500/10 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-red-100 font-semibold">إجمالي المرتجعات</span>
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <i data-lucide="rotate-ccw" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-xl font-black font-mono tracking-tight" id="kpiReturns">0</p>
+                <p class="text-[11px] text-red-100 mt-1 flex items-center gap-1 font-medium">
+                  مبيعات ومشتريات مردودة
+                </p>
+              </div>
+            </div>
+
+            <!-- 6. Net VAT (صافي ضريبة القيمة المضافة) -->
+            <div class="bg-gradient-invoices rounded-2xl p-4 text-white shadow-lg shadow-orange-500/10 flex flex-col justify-between relative overflow-hidden group">
+              <div class="absolute -right-4 -bottom-4 w-20 h-20 bg-white/10 rounded-full blur-xl group-hover:scale-125 transition"></div>
+              <div class="flex items-center justify-between">
+                <span class="text-xs text-orange-100 font-semibold">ضريبة القيمة المضافة</span>
+                <div class="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <i data-lucide="receipt" class="w-4 h-4"></i>
+                </div>
+              </div>
+              <div class="mt-3">
+                <p class="text-xl font-black font-mono tracking-tight" id="kpiVAT">0</p>
+                <p class="text-[11px] text-orange-100 mt-1 flex items-center gap-1 font-medium">
+                  مستحقة للهيئة (VAT 15%)
+                </p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Visual Accounting Charts Row -->
+          <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            <!-- Chart 1: Financial Movement (المبيعات والتكلفة والمشتريات) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm lg:col-span-2">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6">
+                <div>
+                  <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="bar-chart-2" class="w-5 h-5 text-blue-600"></i>
+                    العلاقة المحاسبية: المبيعات وتكلفة البضاعة المباعة (COGS) والمشتريات
+                  </h3>
+                  <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                    توضيح كيفية تولد التكلفة تلقائياً مع حركة المبيعات في نظام الجرد المستمر بالـ ERP
+                  </p>
+                </div>
+                <div class="flex items-center gap-2 text-xs">
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-blue-500"></span> المبيعات</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-purple-500"></span> تكلفة البضاعة</span>
+                  <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-500"></span> المشتريات</span>
+                </div>
+              </div>
+              <div class="h-72 w-full">
+                <canvas id="mainTrendsChart"></canvas>
+              </div>
+            </div>
+
+            <!-- Chart 2: Entries Distribution by Nature -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <div class="flex items-center justify-between mb-4">
+                  <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                    <i data-lucide="pie-chart" class="w-5 h-5 text-indigo-500"></i>
+                    توزيع القيود المالية
+                  </h3>
+                  <span class="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-slate-600 dark:text-slate-300 font-mono font-bold" id="chartTotalEntriesCount">14 قيد</span>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                  نسبة الحركات المسجلة عبر دورات الـ ERP الرئيسية
+                </p>
+              </div>
+              <div class="h-56 relative flex items-center justify-center">
+                <canvas id="natureDistributionChart"></canvas>
+              </div>
+              <div class="grid grid-cols-2 gap-2 text-xs text-slate-600 dark:text-slate-400 pt-4 border-t border-slate-100 dark:border-slate-800 mt-2">
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded bg-blue-500"></span> مبيعات وإيراد</div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded bg-emerald-500"></span> مشتريات وموردين</div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded bg-purple-500"></span> تكلفة البضاعة</div>
+                <div class="flex items-center gap-2"><span class="w-2.5 h-2.5 rounded bg-cyan-500"></span> مخزون وتسويات</div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Interactive Accounting Flow Diagram Banner -->
+          <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-950 rounded-2xl p-6 text-white border border-indigo-900/50 shadow-xl relative overflow-hidden">
+            <div class="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
+              <div class="space-y-2 text-center md:text-right">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-blue-500/20 border border-blue-400/30 text-blue-300 text-xs font-semibold">
+                  <i data-lucide="zap" class="w-3.5 h-3.5 text-blue-400"></i>
+                  التكامل الآلي للقيود في الـ ERP
+                </div>
+                <h3 class="text-xl sm:text-2xl font-black font-display text-white">
+                  كيف ترتبط فاتورة البيع بتكلفة البضاعة والمخزون لحظياً؟
+                </h3>
+                <p class="text-xs sm:text-sm text-slate-300 max-w-2xl leading-relaxed">
+                  عند إصدار <strong class="text-white">فاتورة مبيعات</strong>، يولد الـ ERP قيدين آليين متزامنين: قيد الإيراد والعملاء (من ح/ العملاء إلى ح/ المبيعات والضريبة)، وقيد المخزون والتكلفة (من ح/ تكلفة البضاعة المباعة إلى ح/ المخزون) لتخفيض الكمية والقيمة فوراً دون انتظار الجرد السنوي!
+                </p>
+              </div>
+              <div class="flex flex-wrap items-center justify-center gap-2">
+                <button onclick="switchTab('simulator')" class="px-5 py-2.5 rounded-xl bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-bold text-xs sm:text-sm shadow-lg shadow-blue-500/25 transition">
+                  جرب المحاكي الآلي
+                </button>
+                <button onclick="switchTab('cogs')" class="px-4 py-2.5 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold text-xs sm:text-sm border border-white/20 transition">
+                  تفاصيل قيود التكلفة (COGS)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Entries Filter & Main Journal Table Component -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
+            
+            <!-- Table Header Bar -->
+            <div class="p-5 sm:p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div>
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <i data-lucide="list-checks" class="w-5 h-5 text-blue-600"></i>
+                  سجل القيود المحاسبية التفصيلي (Journal Entries)
+                </h3>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                  عرض كل قيد مالي مع الحساب المدين، الحساب الدائن، ونوع الحركة في الـ ERP
+                </p>
+              </div>
+
+              <!-- Filter Buttons Tabs -->
+              <div class="flex flex-wrap items-center gap-1.5 bg-slate-100 dark:bg-slate-800 p-1.5 rounded-xl text-xs font-semibold">
+                <button data-filter="all" onclick="applyFilter('all', this)" class="filter-tab-btn active px-3 py-1.5 rounded-lg bg-blue-600 text-white shadow-sm transition">
+                  الكل (<span id="countAll">0</span>)
+                </button>
+                <button data-filter="sales" onclick="applyFilter('sales', this)" class="filter-tab-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition">
+                  المبيعات
+                </button>
+                <button data-filter="purchases" onclick="applyFilter('purchases', this)" class="filter-tab-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition">
+                  المشتريات
+                </button>
+                <button data-filter="returns" onclick="applyFilter('returns', this)" class="filter-tab-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition">
+                  المرتجعات
+                </button>
+                <button data-filter="cogs" onclick="applyFilter('cogs', this)" class="filter-tab-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition">
+                  التكلفة (COGS)
+                </button>
+                <button data-filter="inventory" onclick="applyFilter('inventory', this)" class="filter-tab-btn px-3 py-1.5 rounded-lg text-slate-600 dark:text-slate-300 hover:bg-white dark:hover:bg-slate-700 transition">
+                  المخزون
+                </button>
+              </div>
+            </div>
+
+            <!-- Entries Table -->
+            <div class="overflow-x-auto">
+              <table class="w-full text-right border-collapse">
+                <thead>
+                  <tr class="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    <th class="py-3.5 px-4">رقم القيد</th>
+                    <th class="py-3.5 px-4">التاريخ</th>
+                    <th class="py-3.5 px-4">نوع العملية</th>
+                    <th class="py-3.5 px-4">البيان والشرح</th>
+                    <th class="py-3.5 px-4">الطرف المدين (Debit)</th>
+                    <th class="py-3.5 px-4">الطرف الدائن (Credit)</th>
+                    <th class="py-3.5 px-4 text-left">المبلغ</th>
+                    <th class="py-3.5 px-4 text-center">الحالة</th>
+                    <th class="py-3.5 px-4 text-center">الإجراءات</th>
+                  </tr>
+                </thead>
+                <tbody id="entriesTableBody" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs">
+                  <!-- Filled dynamically by JS -->
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Table Footer -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-850 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 dark:text-slate-400">
+              <div class="flex items-center gap-2">
+                <span>إجمالي القيود المعروضة:</span>
+                <span id="showingCount" class="font-bold text-slate-800 dark:text-slate-200">0</span>
+                <span>قيد محاسبي معتمد</span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold">
+                  <i data-lucide="check-check" class="w-4 h-4"></i>
+                  مجموع المدين = مجموع الدائن (100% متوازن)
+                </span>
+              </div>
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 2: SALES JOURNAL ENTRIES (قيود المبيعات) -->
+        <!-- ========================================== -->
+        <section id="tab-sales" class="tab-content hidden space-y-6">
+          
+          <!-- Sales Header & Educational Banner -->
+          <div class="bg-gradient-to-r from-blue-700 to-indigo-800 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">دورة المبيعات في الـ ERP (Sales Cycle)</span>
+              <h2 class="text-2xl font-black font-display">القيود المحاسبية لمبيعات البضائع والخدمات والضرائب</h2>
+              <p class="text-xs sm:text-sm text-blue-100 leading-relaxed">
+                في أنظمة ERP المتقدمة، لا تقتصر فاتورة البيع على إثبات الإيراد فقط، بل تقوم بتسجيل استحقاق العميل أو قبض النقدية، وإثبات ضريبة القيمة المضافة للمخرجات (VAT Output)، وتخفيض المخزون وإثبات تكلفة البضاعة المباعة تلقائياً.
+              </p>
+            </div>
+          </div>
+
+          <!-- Step-by-Step Sales Accounting Rules Cards -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Card 1: Credit Sale -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-blue-500 transition">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-bold px-2 py-1 rounded-lg bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300">1. فاتورة بيع آجل (Credit)</span>
+                  <i data-lucide="file-text" class="w-4 h-4 text-blue-600"></i>
+                </div>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-2">بيع بضاعة بالآجل لعميل تجاري</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                  يتم إثبات مديونية العميل بكامل الفاتورة مع الضريبة، وإثبات صافي الإيراد للمبيعات، والضريبة كالتزام للهيئة:
+                </p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5 font-mono">
+                  <div class="text-emerald-600 dark:text-emerald-400 font-bold">من ح/ العملاء (المدينون) [إجمالي شامل الضريبة]</div>
+                  <div class="text-slate-600 dark:text-slate-300 pr-4">إلى مذكورين:</div>
+                  <div class="text-blue-600 dark:text-blue-400 pr-6">ح/ إيراد المبيعات [صافي القيمة]</div>
+                  <div class="text-orange-600 dark:text-orange-400 pr-6">ح/ أمانات ضريبة القيمة المضافة (15%)</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                ⭐ يتولد معه قيد التكلفة آلياً: من ح/ تكلفة البضاعة المباعة إلى ح/ المخزون
+              </div>
+            </div>
+
+            <!-- Card 2: Cash Sale -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-blue-500 transition">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300">2. بيع نقدي (Cash POS)</span>
+                  <i data-lucide="banknote" class="w-4 h-4 text-emerald-600"></i>
+                </div>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-2">مبيعات نقاط البيع والمعارض</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                  تودع الأموال مباشرة في الصندوق أو الحساب البنكي (عبر شبكة مدى / بطاقات ائتمانية):
+                </p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5 font-mono">
+                  <div class="text-emerald-600 dark:text-emerald-400 font-bold">من ح/ الصندوق / البنك (مدى) [إجمالي المقبوض]</div>
+                  <div class="text-slate-600 dark:text-slate-300 pr-4">إلى مذكورين:</div>
+                  <div class="text-blue-600 dark:text-blue-400 pr-6">ح/ إيراد المبيعات [صافي]</div>
+                  <div class="text-orange-600 dark:text-orange-400 pr-6">ح/ ضريبة القيمة المضافة للمخرجات</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                ⭐ لا يمر بحساب العملاء نظراً للتحصيل الفوري عند نقطة البيع
+              </div>
+            </div>
+
+            <!-- Card 3: Settlement & Cash Discount -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-blue-500 transition">
+              <div>
+                <div class="flex items-center justify-between mb-3">
+                  <span class="text-xs font-bold px-2 py-1 rounded-lg bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300">3. سداد العميل والخصم النقدي</span>
+                  <i data-lucide="percent" class="w-4 h-4 text-purple-600"></i>
+                </div>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-2">تحصيل مستحقات العملاء مع تعجيل الدفع</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                  عند سداد العميل في مهلة الخصم الممنوحة له (خصم مسموح به):
+                </p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5 font-mono">
+                  <div class="text-slate-600 dark:text-slate-300">من مذكورين:</div>
+                  <div class="text-emerald-600 dark:text-emerald-400 pr-4">ح/ البنك / الصندوق [المبلغ المسدد]</div>
+                  <div class="text-purple-600 dark:text-purple-400 pr-4">ح/ خصم مسموح به (مصروف مالي)</div>
+                  <div class="text-blue-600 dark:text-blue-400 font-bold">إلى ح/ العملاء [كامل قيمة الدين المقفل]</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                ⭐ يتم تعديل الضريبة إذا تضمن الخصم إشعاراً دائناً ضريبياً معتمداً
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Filtered Sales Entries Specific Table -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <i data-lucide="table" class="w-4 h-4 text-blue-600"></i>
+              قيود المبيعات المسجلة بالنظام حالياً
+            </h3>
+            <div id="salesEntriesTableContainer" class="overflow-x-auto">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 3: PURCHASES JOURNAL ENTRIES (قيود المشتريات) -->
+        <!-- ========================================== -->
+        <section id="tab-purchases" class="tab-content hidden space-y-6">
+          
+          <!-- Purchases Header -->
+          <div class="bg-gradient-to-r from-emerald-800 to-teal-900 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">دورة المشتريات في الـ ERP (Procurement Cycle)</span>
+              <h2 class="text-2xl font-black font-display">القيود المحاسبية لمشتريات البضاعة وتكاليف الشحن والجمارك</h2>
+              <p class="text-xs sm:text-sm text-emerald-100 leading-relaxed">
+                في نظام الجرد المستمر (Perpetual Inventory)، لا يتم استخدام حساب وسيط يسمى "المشتريات"، بل تضاف البضاعة وتكاليف الشحن والتأمين والرسوم الجمركية مباشرة إلى <strong class="text-white">حساب المخزون (Inventory Asset)</strong> لزيادة أصل المنشأة واحتساب التكلفة الحقيقية (Landed Cost).
+              </p>
+            </div>
+          </div>
+
+          <!-- Purchases Rules Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            
+            <!-- Purchase on Credit -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-emerald-500 transition">
+              <div>
+                <span class="text-xs font-bold px-2 py-1 rounded-lg bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 mb-3 inline-block">1. شراء بضاعة بالآجل</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-2">استلام فاتورة المورد مع البضاعة</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                  يزيد أصل المخزون، وتثبت ضريبة المدخلات كأصل مسترد من هيئة الضرائب:
+                </p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5 font-mono">
+                  <div class="text-slate-600 dark:text-slate-300">من مذكورين:</div>
+                  <div class="text-cyan-600 dark:text-cyan-400 pr-4 font-bold">ح/ مخزون البضاعة [سعر الشراء بدون ضريبة]</div>
+                  <div class="text-orange-600 dark:text-orange-400 pr-4 font-bold">ح/ ضريبة المدخلات المستردة (VAT Input 15%)</div>
+                  <div class="text-emerald-600 dark:text-emerald-400 font-bold">إلى ح/ الموردين (الدائنون) [إجمالي مستحق الفاتورة]</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                ⭐ لا يُسجل مصروف، بل يزداد أصل المخزون في الميزانية العمومية
+              </div>
+            </div>
+
+            <!-- Freight & Customs (Landed Cost) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-emerald-500 transition">
+              <div>
+                <span class="text-xs font-bold px-2 py-1 rounded-lg bg-cyan-100 text-cyan-800 dark:bg-cyan-900/50 dark:text-cyan-300 mb-3 inline-block">2. مصاريف الشحن والجمارك</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-2">رسملة مصاريف النقل على المخزون (Freight-in)</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                  معيار المحاسبة الدولي (IAS 2) يلزم بإضافة كافة تكاليف نقل وتجهيز البضاعة إلى حساب المخزون:
+                </p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5 font-mono">
+                  <div class="text-cyan-600 dark:text-cyan-400 font-bold">من ح/ مخزون البضاعة (مصاريف شحن وجمارك)</div>
+                  <div class="text-orange-600 dark:text-orange-400 font-bold">من ح/ ضريبة المدخلات (إن وجدت)</div>
+                  <div class="text-slate-600 dark:text-slate-300 font-bold">إلى ح/ الصندوق / البنك / شركة النقل والجمارك</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                ⭐ يرتفع متوسط تكلفة الوحدة الواحدة آلياً في الـ ERP
+              </div>
+            </div>
+
+            <!-- Payment & Discount Received -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between hover:border-emerald-500 transition">
+              <div>
+                <span class="text-xs font-bold px-2 py-1 rounded-lg bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300 mb-3 inline-block">3. سداد المورد والخصم المكتسب</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mb-2">سداد مستحقات المورد نقداً أو تحويل بنكي</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                  إغلاق التزام المورد مع إثبات الخصم المكتسب عند السداد المعجل:
+                </p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs space-y-1.5 font-mono">
+                  <div class="text-emerald-600 dark:text-emerald-400 font-bold">من ح/ الموردين (الدائنون) [كامل رصيد الدين]</div>
+                  <div class="text-slate-600 dark:text-slate-300 pr-4">إلى مذكورين:</div>
+                  <div class="text-blue-600 dark:text-blue-400 pr-6">ح/ البنك / الصندوق [المبلغ المسدد فعلياً]</div>
+                  <div class="text-purple-600 dark:text-purple-400 pr-6">ح/ الخصم المكتسب (أو تخفيض المخزون)</div>
+                </div>
+              </div>
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                ⭐ يسجل الخصم المكتسب كإيراد تمويلي أو تخفيض لتكلفة المخزون
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Purchases Entries Table -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <i data-lucide="package-check" class="w-4 h-4 text-emerald-600"></i>
+              قيود المشتريات وتكاليف الشحن المسجلة بالنظام
+            </h3>
+            <div id="purchasesEntriesTableContainer" class="overflow-x-auto">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 4: RETURNS JOURNAL ENTRIES (قيود المرتجعات) -->
+        <!-- ========================================== -->
+        <section id="tab-returns" class="tab-content hidden space-y-6">
+          
+          <!-- Returns Header -->
+          <div class="bg-gradient-to-r from-red-700 to-rose-900 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">المرتجعات والتسويات (Returns & Credit Notes)</span>
+              <h2 class="text-2xl font-black font-display">قيود مرتجع المبيعات ومرتجع المشتريات والأثر المزدوج على المخزون</h2>
+              <p class="text-xs sm:text-sm text-rose-100 leading-relaxed">
+                تعتبر عملية الارتجاع في نظام الـ ERP من أدق العمليات المحاسبية: ففي مرتجع المبيعات، يجب إلغاء قيمة الإيراد والضريبة، وفي ذات اللحظة إعادة البضاعة السليمة إلى رصيد المستودع وتخفيض تكلفة البضاعة المباعة المسجلة مسبقاً!
+              </p>
+            </div>
+          </div>
+
+          <!-- Detailed Comparison Grid: Sales Return vs Purchase Return -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Left: Sales Return (مرتجع المبيعات) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 border-red-200 dark:border-red-900/50 shadow-md">
+              <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/50 text-red-600 dark:text-red-400 flex items-center justify-center font-bold">
+                  <i data-lucide="rotate-ccw" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-lg text-slate-900 dark:text-white">قيود مرتجع المبيعات (Sales Returns)</h3>
+                  <p class="text-xs text-slate-500">إشعار دائن صادر للعميل (Credit Note)</p>
+                </div>
+              </div>
+
+              <div class="space-y-4 text-xs">
+                <div class="p-3 bg-red-50 dark:bg-red-950/30 rounded-xl border border-red-200 dark:border-red-900/50">
+                  <h5 class="font-bold text-red-800 dark:text-red-300 mb-2">القيد الأول: إلغاء قيمة البيع والضريبة</h5>
+                  <div class="font-mono space-y-1">
+                    <p class="text-slate-700 dark:text-slate-300 font-semibold">من مذكورين:</p>
+                    <p class="text-red-600 dark:text-red-400 pr-4 font-bold">ح/ مردودات ومسموحات المبيعات [قيمة البضاعة]</p>
+                    <p class="text-orange-600 dark:text-orange-400 pr-4 font-bold">ح/ ضريبة القيمة المضافة للمخرجات [تخفيض الالتزام الضريبي]</p>
+                    <p class="text-slate-800 dark:text-slate-200 font-bold">إلى ح/ العملاء (أو الصندوق إذا كان رداً نقدياً)</p>
+                  </div>
+                </div>
+
+                <div class="p-3 bg-cyan-50 dark:bg-cyan-950/30 rounded-xl border border-cyan-200 dark:border-cyan-900/50">
+                  <h5 class="font-bold text-cyan-800 dark:text-cyan-300 mb-2">القيد الثاني: إعادة البضاعة للمخزون واسترجاع تكلفتها</h5>
+                  <div class="font-mono space-y-1">
+                    <p class="text-cyan-600 dark:text-cyan-400 font-bold">من ح/ مخزون البضاعة [زيادة الأصل في المستودع]</p>
+                    <p class="text-purple-600 dark:text-purple-400 font-bold">إلى ح/ تكلفة البضاعة المباعة (COGS) [تخفيض المصروف]</p>
+                  </div>
+                  <p class="text-[11px] text-cyan-800 dark:text-cyan-300 mt-2">
+                    💡 يصحح هذا القيد هوامش الربح وكميات الجرد المخزني فورياً وبدقة متناهية.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right: Purchase Return (مرتجع المشتريات) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border-2 border-emerald-200 dark:border-emerald-900/50 shadow-md">
+              <div class="flex items-center gap-3 mb-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+                <div class="w-10 h-10 rounded-xl bg-emerald-100 dark:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 flex items-center justify-center font-bold">
+                  <i data-lucide="corner-up-left" class="w-5 h-5"></i>
+                </div>
+                <div>
+                  <h3 class="font-bold text-lg text-slate-900 dark:text-white">قيود مرتجع المشتريات (Purchase Returns)</h3>
+                  <p class="text-xs text-slate-500">إشعار مدين للمورد (Debit Note)</p>
+                </div>
+              </div>
+
+              <div class="space-y-4 text-xs">
+                <div class="p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-xl border border-emerald-200 dark:border-emerald-900/50">
+                  <h5 class="font-bold text-emerald-800 dark:text-emerald-300 mb-2">قيد إرجاع البضاعة للمورد وتخفيض المديونية والضريبة</h5>
+                  <div class="font-mono space-y-1">
+                    <p class="text-emerald-700 dark:text-emerald-400 font-bold">من ح/ الموردين (الدائنون) [تخفيض مستحقات المورد بكامل القيمة]</p>
+                    <p class="text-slate-700 dark:text-slate-300 font-semibold pr-4">إلى مذكورين:</p>
+                    <p class="text-cyan-600 dark:text-cyan-400 pr-6 font-bold">ح/ مخزون البضاعة [تخفيض رصيد المخزون المسلم]</p>
+                    <p class="text-orange-600 dark:text-orange-400 pr-6 font-bold">ح/ ضريبة القيمة المضافة للمدخلات [تخفيض الضريبة المستردة]</p>
+                  </div>
+                  <p class="text-[11px] text-emerald-800 dark:text-emerald-300 mt-2">
+                    💡 في حال رد المورد المبلغ نقداً، يكون الطرف المدين هو حساب الصندوق أو البنك بدلاً من حساب الموردين.
+                  </p>
+                </div>
+
+                <div class="p-3 bg-amber-50 dark:bg-amber-950/30 rounded-xl border border-amber-200 dark:border-amber-900/50">
+                  <h5 class="font-bold text-amber-800 dark:text-amber-300 mb-1">حالة خاصة: رد بضاعة تالفة دون تعويض المورد</h5>
+                  <p class="text-[11px] text-amber-800 dark:text-amber-300 leading-relaxed font-mono">
+                    من ح/ خسائر بضاعة تالفة (مصروف) | إلى ح/ مخزون البضاعة
+                  </p>
+                </div>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Returns Entries Table -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <i data-lucide="rotate-ccw" class="w-4 h-4 text-red-600"></i>
+              قيود المرتجعات المسجلة بالنظام
+            </h3>
+            <div id="returnsEntriesTableContainer" class="overflow-x-auto">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 5: COST OF GOODS SOLD (COGS) (تكلفة البضاعة المباعة) -->
+        <!-- ========================================== -->
+        <section id="tab-cogs" class="tab-content hidden space-y-6">
+          
+          <!-- COGS Header -->
+          <div class="bg-gradient-to-r from-purple-800 via-indigo-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">معيار المحاسبة الدولي IAS 2 - تكلفة المبيعات</span>
+              <h2 class="text-2xl font-black font-display">تكلفة البضاعة المباعة (COGS): الجرد المستمر مقابل الجرد الدوري</h2>
+              <p class="text-xs sm:text-sm text-purple-100 leading-relaxed">
+                تكلفة البضاعة المباعة تمثل التكلفة المباشرة للسلع التي تم بيعها للعملاء لتحقيق الإيراد. يحدد نظام الـ ERP تكلفة كل وحدة مباعة بناء على طريقة التقييم المعتمدة (المتوسط المرجح WAC أو FIFO) ويقيدها في قائمة الدخل مقابل تخفيض أصل المخزون بالميزانية العمومية.
+              </p>
+            </div>
+          </div>
+
+          <!-- Perpetual vs Periodic Inventory Deep-Dive -->
+          <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            
+            <!-- Perpetual Inventory System (الجرد المستمر) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <span class="px-3 py-1 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-900/50 dark:text-purple-300 font-bold text-xs">نظام الجرد المستمر (الافتراضي في الـ ERP الحديث)</span>
+                <i data-lucide="refresh-cw" class="w-5 h-5 text-purple-600"></i>
+              </div>
+              <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 mb-2">تحديث لحظي للتكلفة مع كل فاتورة بيع</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                مع كل أمر تسليم أو فاتورة مبيعات، يولد النظام تلقائياً وبشكل آلي في نفس الثانية القيد المحاسبي التالي:
+              </p>
+              
+              <div class="p-4 bg-purple-50 dark:bg-purple-950/40 rounded-xl border border-purple-200 dark:border-purple-800 font-mono text-xs space-y-2">
+                <div class="text-purple-700 dark:text-purple-300 font-bold">
+                  من ح/ تكلفة البضاعة المباعة (COGS) [مصروف في قائمة الدخل]
+                </div>
+                <div class="text-cyan-600 dark:text-cyan-400 font-bold pr-6">
+                  إلى ح/ مخزون البضاعة [تخفيض أصل المخزون في الميزانية العمومية]
+                </div>
+              </div>
+
+              <div class="mt-4 space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                <p class="flex items-center gap-2">
+                  <i data-lucide="check" class="w-4 h-4 text-emerald-500"></i>
+                  معرفة رصيد المخزون الفعلي وأرباح الشركة بدقة في أي لحظة خلال اليوم.
+                </p>
+                <p class="flex items-center gap-2">
+                  <i data-lucide="check" class="w-4 h-4 text-emerald-500"></i>
+                  اكتشاف العجز أو السرقة المخزنية فور عمل جرد مفاجئ دون انتظار نهاية العام.
+                </p>
+              </div>
+            </div>
+
+            <!-- Periodic Inventory System (الجرد الدوري) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+              <div class="flex items-center justify-between mb-4">
+                <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 font-bold text-xs">نظام الجرد الدوري (الأنظمة التقليدية)</span>
+                <i data-lucide="calendar" class="w-5 h-5 text-slate-500"></i>
+              </div>
+              <h3 class="font-bold text-base text-slate-800 dark:text-slate-100 mb-2">احتساب التكلفة في نهاية الفترة عبر المعادلة المحاسبية</h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                لا يسجل قيد تكلفة مع البيع، بل يتم حساب التكلفة سنوياً أو فصلياً بعد حصر المخزون فعلياً:
+              </p>
+
+              <div class="p-3 bg-slate-100 dark:bg-slate-800 rounded-xl text-xs font-mono text-center font-bold text-indigo-600 dark:text-indigo-400 mb-3">
+                تكلفة المبيعات = مخزون أول المدة + صافي المشتريات - مخزون آخر المدة
+              </div>
+
+              <div class="p-4 bg-slate-50 dark:bg-slate-850 rounded-xl border border-slate-200 dark:border-slate-700 font-mono text-xs space-y-1.5">
+                <p class="text-slate-700 dark:text-slate-300 font-semibold">قيد إقفال وتحديد التكلفة نهاية السنة:</p>
+                <p class="text-emerald-600 dark:text-emerald-400 font-bold pr-2">من ح/ مخزون آخر المدة (الفحص الفعلي)</p>
+                <p class="text-purple-600 dark:text-purple-400 font-bold pr-2">من ح/ تكلفة البضاعة المباعة (المتمم الحسابي)</p>
+                <p class="text-slate-600 dark:text-slate-400 pr-4">إلى مذكورين:</p>
+                <p class="text-red-500 pr-6">ح/ مخزون أول المدة (إقفال الرصيد الافتتاحي)</p>
+                <p class="text-blue-500 pr-6">ح/ المشتريات ومصاريف النقل (إقفال حسابات الفترة)</p>
+              </div>
+            </div>
+
+          </div>
+
+          <!-- Interactive Gross Margin Calculator -->
+          <div class="bg-gradient-to-br from-slate-900 to-indigo-950 rounded-2xl p-6 text-white border border-indigo-900/60 shadow-xl">
+            <h3 class="text-lg font-bold mb-2 flex items-center gap-2">
+              <i data-lucide="calculator" class="w-5 h-5 text-amber-400"></i>
+              حاسبة تكلفة المبيعات وهامش الربح الإجمالي (COGS & Gross Margin Calculator)
+            </h3>
+            <p class="text-xs text-slate-300 mb-6">
+              جرّب إدخال سعر بيع منتج وتكلفة شرائه ومصاريف شحنه لاحتساب قيد الـ ERP وهامش الربح بدقة:
+            </p>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">سعر بيع البضاعة للعميل (بدون ضريبة)</label>
+                <input type="number" id="calcSalePrice" value="10000" oninput="runCOGSCalculator()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">تكلفة شراء البضاعة من المورد</label>
+                <input type="number" id="calcPurchaseCost" value="6000" oninput="runCOGSCalculator()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">مصاريف الشحن والجمارك المباشرة</label>
+                <input type="number" id="calcFreight" value="500" oninput="runCOGSCalculator()" class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm text-white font-mono focus:outline-none focus:border-blue-500">
+              </div>
+              <div>
+                <label class="block text-xs font-semibold text-slate-300 mb-1">ضريبة القيمة المضافة (15%)</label>
+                <div class="w-full bg-slate-800/60 border border-slate-700 rounded-xl px-4 py-2 text-sm font-mono text-amber-400" id="calcVATDisplay">1,500 ر.س</div>
+              </div>
+            </div>
+
+            <!-- Calculation Output Cards -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 p-4 rounded-xl bg-slate-800/80 border border-slate-700 text-center">
+              <div>
+                <span class="text-xs text-slate-400">إجمالي تكلفة البضاعة المباعة (COGS)</span>
+                <p class="text-xl font-bold font-mono text-purple-400 mt-1" id="calcTotalCOGS">6,500 ر.س</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">القيد: من ح/ تكلفة البضاعة إلى ح/ المخزون</p>
+              </div>
+              <div>
+                <span class="text-xs text-slate-400">إجمالي الربح المحقق (Gross Profit)</span>
+                <p class="text-xl font-bold font-mono text-emerald-400 mt-1" id="calcGrossProfit">3,500 ر.س</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">المبيعات - تكلفة البضاعة المباعة</p>
+              </div>
+              <div>
+                <span class="text-xs text-slate-400">نسبة هامش الربح الإجمالي (Gross Margin %)</span>
+                <p class="text-xl font-bold font-mono text-cyan-400 mt-1" id="calcGrossMargin">35.0%</p>
+                <p class="text-[11px] text-slate-400 mt-0.5">مؤشر كفاءة تسعير المنتجات</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Valuation Methods (FIFO vs WAC) -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <i data-lucide="layers" class="w-4 h-4 text-purple-600"></i>
+              طرق تقييم تكلفة المخزون المعتمدة في معايير IFRS
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-600 dark:text-slate-300">
+              <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                <span class="font-bold text-sm text-blue-600 dark:text-blue-400">طريقة المتوسط المرجح المتحرك (WAC - Weighted Average Cost)</span>
+                <p class="leading-relaxed">
+                  تعتبر الطريقة الأكثر شيوعاً في برامج ERP. يعاد حساب تكلفة الوحدة تلقائياً بعد كل عملية شراء جديدة:
+                </p>
+                <div class="p-2 rounded bg-white dark:bg-slate-900 font-mono text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                  متوسط التكلفة للوحدة = (قيمة الرصيد الحالي + قيمة الشحنة الجديدة) ÷ (الكمية الحالية + الكمية الجديدة)
+                </div>
+              </div>
+
+              <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-2">
+                <span class="font-bold text-sm text-emerald-600 dark:text-emerald-400">طريقة الوارد أولاً يصرف أولاً (FIFO - First In First Out)</span>
+                <p class="leading-relaxed">
+                  تفترض أن الوحدات المشتراة أولاً هي التي تباع أولاً، وبالتالي تقيم تكلفة البضاعة المباعة بالأسعار الأقدم، ويبقى المخزون في الميزانية مقيماً بأحدث الأسعار السوقية.
+                </p>
+                <div class="p-2 rounded bg-white dark:bg-slate-900 font-mono text-[11px] text-slate-800 dark:text-slate-200 border border-slate-200 dark:border-slate-700">
+                  💡 ترفع صافي الربح في فترات التضخم مقارنة بالمتوسط المرجح
+                </div>
+              </div>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 6: INVENTORY & STOCK ADJUSTMENTS (المخزون والتسويات الجردية) -->
+        <!-- ========================================== -->
+        <section id="tab-inventory" class="tab-content hidden space-y-6">
+          
+          <!-- Inventory Header -->
+          <div class="bg-gradient-to-r from-cyan-800 via-teal-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">إدارة المستودعات والحركات المخزنية (Inventory Accounting)</span>
+              <h2 class="text-2xl font-black font-display">قيود تسوية المخزون: العجز، الفائض، الهبوط، والتحويل بين المستودعات</h2>
+              <p class="text-xs sm:text-sm text-cyan-100 leading-relaxed">
+                المخزون السلعي هو شريان النشاط التجاري والصناعي. تتطلب الرقابة الداخلية إثبات كافة الفروقات الجردية الناتجة عن الجرد الدوري والمفاجئ، معالجة التلف، الهبوط السوقي لأسعار المواد، والتحويلات الداخلية بين الفروع.
+              </p>
+            </div>
+          </div>
+
+          <!-- Inventory Movement Types Grid -->
+          <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            
+            <!-- 1. Inventory Shrinkage / Loss (عجز المخزون) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300">عجز مخزني (تلف / فاقد)</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mt-2 mb-1">تسوية عجز الجرد الفعلي</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">عندما يكون الجرد الفعلي أقل من الرصيد الدفتري:</p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono space-y-1">
+                  <p class="text-red-600 dark:text-red-400 font-bold">من ح/ خسائر عجز المخزون (مصروف)</p>
+                  <p class="text-cyan-600 dark:text-cyan-400 font-bold pr-2">إلى ح/ مخزون البضاعة</p>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                إذا كان مسؤولية أمين المستودع: يحمل على حسابه (ح/ ذمم الموظفين)
+              </p>
+            </div>
+
+            <!-- 2. Inventory Surplus (فائض المخزون) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300">فائض مخزني</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mt-2 mb-1">تسوية زيادة الجرد الفعلي</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">عندما يكون الفعلي في المستودع أكثر من الدفتري:</p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono space-y-1">
+                  <p class="text-cyan-600 dark:text-cyan-400 font-bold">من ح/ مخزون البضاعة (زيادة الأصل)</p>
+                  <p class="text-emerald-600 dark:text-emerald-400 font-bold pr-2">إلى ح/ أرباح تسوية المخزون (إيراد متنوع)</p>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                يقفل في قائمة الدخل كإيراد تشغيلي آخر
+              </p>
+            </div>
+
+            <!-- 3. Lower of Cost or Net Realizable Value (هبوط أسعار المخزون) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300">هبوط الأسعار (NRV)</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mt-2 mb-1">مخصص هبوط قيمة البضاعة</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">عند انخفاض سعر السوق للبضاعة عن تكلفتها التاريخية:</p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono space-y-1">
+                  <p class="text-amber-600 dark:text-amber-400 font-bold">من ح/ خسائر هبوط أسعار المخزون</p>
+                  <p class="text-slate-600 dark:text-slate-400 font-bold pr-2">إلى ح/ مخصص هبوط أسعار المخزون</p>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                حساب مقابل للأصل يخفض المخزون بالميزانية
+              </p>
+            </div>
+
+            <!-- 4. Warehouse Transfer (التحويل بين المستودعات) -->
+            <div class="bg-white dark:bg-slate-900 rounded-2xl p-5 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              <div>
+                <span class="text-xs font-bold px-2 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">تحويل مستودعي</span>
+                <h4 class="font-bold text-sm text-slate-800 dark:text-slate-100 mt-2 mb-1">نقل البضاعة بين الفروع</h4>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mb-3">مناقلة بضاعة من المستودع الرئيسي للفرع:</p>
+                <div class="bg-slate-50 dark:bg-slate-800 p-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-mono space-y-1">
+                  <p class="text-blue-600 dark:text-blue-400 font-bold">من ح/ مخزون مستودع الفرع (المستلم)</p>
+                  <p class="text-slate-600 dark:text-slate-400 font-bold pr-2">إلى ح/ مخزون المستودع العام (المرسل)</p>
+                </div>
+              </div>
+              <p class="text-[11px] text-slate-500 mt-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                لا يؤثر على صافي الربح الإجمالي، بل ينقل العهدة
+              </p>
+            </div>
+
+          </div>
+
+          <!-- Inventory Entries Table -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <h3 class="font-bold text-base text-slate-900 dark:text-white mb-4 flex items-center gap-2">
+              <i data-lucide="boxes" class="w-4 h-4 text-cyan-600"></i>
+              قيود المخزون والتسويات الجردية المعتمدة
+            </h3>
+            <div id="inventoryEntriesTableContainer" class="overflow-x-auto">
+              <!-- Rendered via JS -->
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 7: INTERACTIVE ENTRY SIMULATOR (محاكي القيود الذكي) -->
+        <!-- ========================================== -->
+        <section id="tab-simulator" class="tab-content hidden space-y-6">
+          
+          <div class="bg-gradient-to-r from-amber-600 via-orange-600 to-amber-700 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">مولّد القيود المحاسبية التفاعلي (ERP Journal Generator)</span>
+              <h2 class="text-2xl font-black font-display">محاكي القيود الذكي: اختر المعاملة واكتب الأرقام لتوليد القيد فوراً!</h2>
+              <p class="text-xs sm:text-sm text-amber-100 leading-relaxed">
+                أداة عملية تفاعلية تحاكي خوارزميات محرك القيود المالية (Accounting Engine) في كبرى أنظمة ERP مثل SAP و Oracle و Odoo. اختر نوع العملية وأدخل المبالغ، وشاهد كيف يتشكل القيد المركب المتوازن مع أثره المالي فوراً!
+              </p>
+            </div>
+          </div>
+
+          <!-- Simulator Control Panel & Live Output -->
+          <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            
+            <!-- Controls Form (5 Cols) -->
+            <div class="lg:col-span-5 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
+              <h3 class="font-bold text-base text-slate-900 dark:text-white flex items-center gap-2 pb-3 border-b border-slate-100 dark:border-slate-800">
+                <i data-lucide="sliders" class="w-5 h-5 text-amber-500"></i>
+                بيانات المعاملة المالية
+              </h3>
+
+              <!-- Transaction Type -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">نوع المعاملة في النظام</label>
+                <select id="simTxType" onchange="updateSimFormFields()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <optgroup label="عمليات المبيعات">
+                    <option value="sale_credit">فاتورة بيع بضاعة بالآجل (مع VAT وتكلفة مخزون)</option>
+                    <option value="sale_cash">فاتورة بيع بضاعة نقدية (POS / كاش)</option>
+                    <option value="sale_discount">سداد العميل مع منح خصم تعجيل دفع (مسموح به)</option>
+                  </optgroup>
+                  <optgroup label="عمليات المشتريات">
+                    <option value="purchase_credit">فاتورة شراء بضاعة بالآجل من مورد</option>
+                    <option value="purchase_freight">مصاريف شحن ونقل مشتريات (Landed Cost)</option>
+                    <option value="purchase_pay_discount">سداد المورد مع الحصول على خصم مكتسب</option>
+                  </optgroup>
+                  <optgroup label="عمليات المرتجعات">
+                    <option value="return_sale">مرتجع مبيعات من عميل (مع إعادة البضاعة للمخزون)</option>
+                    <option value="return_purchase">مرتجع مشتريات لمورد (رد بضاعة واسترداد المبلغ)</option>
+                  </optgroup>
+                  <optgroup label="عمليات المخزون وتكلفة البضاعة">
+                    <option value="stock_shrinkage">إثبات عجز وتلف مخزني بعد الجرد الفعلي</option>
+                    <option value="stock_surplus">إثبات فائض مخزني غير مسجل</option>
+                    <option value="stock_transfer">تحويل بضاعة بين المستودعات</option>
+                  </optgroup>
+                </select>
+              </div>
+
+              <!-- Amount 1: Sale / Transaction Total -->
+              <div>
+                <label id="simAmount1Label" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">قيمة المبيعات (بدون ضريبة)</label>
+                <div class="relative">
+                  <input type="number" id="simAmount1" value="20000" oninput="generateSimulatedJournal()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 currency-symbol">ر.س</span>
+                </div>
+              </div>
+
+              <!-- Amount 2: Cost of Goods (if applicable) -->
+              <div id="simAmount2Container">
+                <label id="simAmount2Label" class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">تكلفة البضاعة المباعة الأصلية من المخزون (COGS)</label>
+                <div class="relative">
+                  <input type="number" id="simAmount2" value="13000" oninput="generateSimulatedJournal()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2.5 text-sm font-mono font-bold text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-xs font-bold text-slate-400 currency-symbol">ر.س</span>
+                </div>
+              </div>
+
+              <!-- VAT Rate Toggle -->
+              <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/80 rounded-xl border border-slate-200 dark:border-slate-700">
+                <div>
+                  <span class="text-xs font-bold text-slate-800 dark:text-slate-200">ضريبة القيمة المضافة (VAT 15%)</span>
+                  <p class="text-[11px] text-slate-500 dark:text-slate-400">تطبيق نسبة الضريبة النظامية</p>
+                </div>
+                <input type="checkbox" id="simVATApply" checked onchange="generateSimulatedJournal()" class="w-5 h-5 rounded text-amber-600 focus:ring-amber-500 cursor-pointer">
+              </div>
+
+              <!-- Customer / Party Name -->
+              <div>
+                <label class="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">اسم الطرف المتعامل / رقم المرجع</label>
+                <input type="text" id="simPartyName" value="شركة البناء الحديث المحدودة" oninput="generateSimulatedJournal()" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3.5 py-2 text-xs sm:text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-amber-500">
+              </div>
+
+              <!-- Add to Main ERP Ledger Button -->
+              <div class="pt-2">
+                <button onclick="commitSimulatedEntryToLedger()" class="w-full py-3 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-bold rounded-xl shadow-lg shadow-amber-500/20 text-xs sm:text-sm flex items-center justify-center gap-2 transition transform active:scale-98">
+                  <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                  اعتماد وترحيل هذا القيد إلى دفتر اليومية
+                </button>
+              </div>
+            </div>
+
+            <!-- Generated Voucher Output (7 Cols) -->
+            <div class="lg:col-span-7 bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm flex flex-col justify-between">
+              
+              <div>
+                <!-- Generated Voucher Header -->
+                <div class="flex items-center justify-between pb-4 border-b border-slate-200 dark:border-slate-800 mb-4">
+                  <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-amber-600 dark:text-amber-400">معاينة سند القيد الناتج آلياً</span>
+                    <h4 class="font-bold text-base text-slate-900 dark:text-white" id="simVoucherTitle">سند قيد محاسبي مركب</h4>
+                  </div>
+                  <span class="text-xs px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300 font-bold flex items-center gap-1">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    متوازن 100%
+                  </span>
+                </div>
+
+                <!-- Simulation Journal Table -->
+                <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden mb-4">
+                  <table class="w-full text-right border-collapse text-xs">
+                    <thead>
+                      <tr class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                        <th class="p-3">رقم الحساب واسمه</th>
+                        <th class="p-3 text-left">مدين (Debit)</th>
+                        <th class="p-3 text-left">دائن (Credit)</th>
+                      </tr>
+                    </thead>
+                    <tbody id="simJournalLines" class="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                      <!-- Rendered by JS -->
+                    </tbody>
+                    <tfoot class="bg-slate-50 dark:bg-slate-800/80 font-bold font-mono border-t border-slate-200 dark:border-slate-700">
+                      <tr>
+                        <td class="p-3 text-slate-800 dark:text-slate-200">الإجمالي المتوازن</td>
+                        <td class="p-3 text-left text-emerald-600 dark:text-emerald-400" id="simTotalDebit">0</td>
+                        <td class="p-3 text-left text-emerald-600 dark:text-emerald-400" id="simTotalCredit">0</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <!-- Accounting Explanation Box -->
+                <div class="p-4 rounded-xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 text-xs space-y-2">
+                  <div class="flex items-center gap-1.5 font-bold text-amber-900 dark:text-amber-300">
+                    <i data-lucide="info" class="w-4 h-4 text-amber-600"></i>
+                    الشرح والأثر المالي للمعاملة:
+                  </div>
+                  <p id="simExplanationText" class="text-slate-700 dark:text-slate-300 leading-relaxed">
+                    جاري احتساب القيد المحاسبي والأثر على القوائم المالية...
+                  </p>
+                </div>
+              </div>
+
+              <!-- Quick Info / Impact Indicators -->
+              <div class="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-2 text-[11px] text-slate-500">
+                <div class="flex items-center gap-1.5">
+                  <i data-lucide="file-check-2" class="w-3.5 h-3.5 text-blue-500"></i>
+                  الأثر: قائمة الدخل + الميزانية العمومية
+                </div>
+                <div class="flex items-center gap-1.5 justify-end">
+                  <i data-lucide="shield-check" class="w-3.5 h-3.5 text-emerald-500"></i>
+                  مطابق لمعايير هيئة المحاسبين القانونيين
+                </div>
+              </div>
+
+            </div>
+
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 8: GENERAL LEDGER & TRIAL BALANCE (دفتر الأستاذ وميزان المراجعة) -->
+        <!-- ========================================== -->
+        <section id="tab-ledger" class="tab-content hidden space-y-6">
+          
+          <div class="bg-gradient-to-r from-indigo-800 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">التقارير المحاسبية الختامية (General Ledger & Trial Balance)</span>
+              <h2 class="text-2xl font-black font-display">ميزان المراجعة بالأرصدة والمجاميع وحسابات الأستاذ العام</h2>
+              <p class="text-xs sm:text-sm text-indigo-100 leading-relaxed">
+                تتجمع القيود المالية اليومية وترحل تلقائياً في الـ ERP إلى دفتر الأستاذ العام (General Ledger). يضمن ميزان المراجعة (Trial Balance) توازن مجموع الحركات المدينة والدائنة وصحة القوائم المالية قبل إصدار الميزانية وقائمة الأرباح والخسائر.
+              </p>
+            </div>
+          </div>
+
+          <!-- Trial Balance Table -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm">
+            <div class="flex items-center justify-between mb-4 pb-3 border-b border-slate-200 dark:border-slate-800">
+              <div>
+                <h3 class="font-bold text-lg text-slate-900 dark:text-white flex items-center gap-2">
+                  <i data-lucide="scale" class="w-5 h-5 text-indigo-600"></i>
+                  ميزان المراجعة الشامل (Trial Balance)
+                </h3>
+                <p class="text-xs text-slate-500">أرصدة ومجاميع الحسابات حتى تاريخ اليوم</p>
+              </div>
+              <button onclick="window.print()" class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-bold hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-1.5 text-slate-700 dark:text-slate-300">
+                <i data-lucide="printer" class="w-4 h-4"></i>
+                طباعة الميزان
+              </button>
+            </div>
+
+            <div class="overflow-x-auto">
+              <table class="w-full text-right border-collapse text-xs">
+                <thead>
+                  <tr class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+                    <th class="p-3">رمز الحساب</th>
+                    <th class="p-3">اسم الحساب في شجرة الحسابات (Chart of Accounts)</th>
+                    <th class="p-3">طبيعة الحساب</th>
+                    <th class="p-3 text-left">مجموع المدين (Debit)</th>
+                    <th class="p-3 text-left">مجموع الدائن (Credit)</th>
+                    <th class="p-3 text-left">الرصيد النهائي (Net Balance)</th>
+                  </tr>
+                </thead>
+                <tbody id="trialBalanceBody" class="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+                  <!-- Rendered dynamically -->
+                </tbody>
+                <tfoot class="bg-slate-100 dark:bg-slate-800/90 font-bold font-mono border-t-2 border-slate-300 dark:border-slate-600 text-xs">
+                  <tr>
+                    <td colspan="3" class="p-3 text-slate-900 dark:text-white">الإجمالي العام لميزان المراجعة</td>
+                    <td class="p-3 text-left text-emerald-600 dark:text-emerald-400" id="tbTotalDebit">0</td>
+                    <td class="p-3 text-left text-emerald-600 dark:text-emerald-400" id="tbTotalCredit">0</td>
+                    <td class="p-3 text-left text-blue-600 dark:text-blue-400" id="tbStatus">متوازن ✓</td>
+                  </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+
+        </section>
+
+        <!-- ========================================== -->
+        <!-- TAB 9: ACCOUNTING GUIDE & ENCYCLOPEDIA (الموسوعة وقواعد القيود) -->
+        <!-- ========================================== -->
+        <section id="tab-guide" class="tab-content hidden space-y-6">
+          
+          <div class="bg-gradient-to-r from-emerald-800 via-teal-900 to-slate-900 rounded-2xl p-6 text-white shadow-xl">
+            <div class="max-w-3xl space-y-2">
+              <span class="px-2.5 py-1 rounded-full bg-white/20 text-xs font-bold tracking-wide">المرجع المالي والمحاسبي المعتمد</span>
+              <h2 class="text-2xl font-black font-display">الموسوعة المحاسبية لقواعد القيد المزدوج في أنظمة ERP</h2>
+              <p class="text-xs sm:text-sm text-emerald-100 leading-relaxed">
+                دليل تدريبي وتطبيقي شامل لشرح وتوضيح كيفية تحديد الطرف المدين والدائن في كل معاملة تجارية، وفهم أثر قيود المخزون والتكلفة والضريبة على القوائم المالية للمنشأة.
+              </p>
+            </div>
+          </div>
+
+          <!-- Golden Rule of Accounting Card -->
+          <div class="bg-white dark:bg-slate-900 rounded-2xl p-6 border border-slate-200 dark:border-slate-800 shadow-sm space-y-6">
+            <div>
+              <h3 class="font-bold text-lg text-slate-900 dark:text-white mb-2 flex items-center gap-2">
+                <i data-lucide="key" class="w-5 h-5 text-amber-500"></i>
+                القاعدة الذهبية لتحديد المدين والدائن في نظام ERP
+              </h3>
+              <p class="text-xs text-slate-500 dark:text-slate-400">
+                تقوم نظرية القيد المزدوج على معادلة الميزانية: <strong class="text-slate-800 dark:text-slate-200">الأصول = الالتزامات + حقوق الملكية</strong>
+              </p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+              
+              <!-- Debit Nature Accounts -->
+              <div class="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 space-y-2">
+                <div class="flex items-center gap-2 font-bold text-emerald-800 dark:text-emerald-300">
+                  <i data-lucide="arrow-up-right" class="w-4 h-4 text-emerald-600"></i>
+                  حسابات بطبيعتها مدينة (تزيد بالمدين وتنقص بالدائن)
+                </div>
+                <ul class="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <li><strong>الأصول المتداولة:</strong> النقدية، البنك، العملاء، ومخزون البضاعة.</li>
+                  <li><strong>المصروفات:</strong> تكلفة البضاعة المباعة (COGS)، مصاريف الشحن، الرواتب، والإيجار.</li>
+                  <li><strong>الخسائر ومردودات المبيعات:</strong> عجز المخزون، والخصم المسموح به.</li>
+                </ul>
+              </div>
+
+              <!-- Credit Nature Accounts -->
+              <div class="p-4 rounded-xl bg-blue-50/70 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
+                <div class="flex items-center gap-2 font-bold text-blue-800 dark:text-blue-300">
+                  <i data-lucide="arrow-down-left" class="w-4 h-4 text-blue-600"></i>
+                  حسابات بطبيعتها دائنة (تزيد بالدائن وتنقص بالمدين)
+                </div>
+                <ul class="list-disc list-inside space-y-1 text-slate-700 dark:text-slate-300 leading-relaxed">
+                  <li><strong>الالتزامات والخصوم:</strong> الموردون (الدائنون)، أمانات ضريبة القيمة المضافة.</li>
+                  <li><strong>حقوق الملكية:</strong> رأس المال، الأرباح المبقاة.</li>
+                  <li><strong>الإيرادات والأرباح:</strong> إيراد المبيعات، فائض تسوية المخزون، الخصم المكتسب.</li>
+                </ul>
+              </div>
+
+            </div>
+
+            <!-- ERP Automated Workflow Summary -->
+            <div class="p-4 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 space-y-3 text-xs">
+              <h4 class="font-bold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+                <i data-lucide="check-circle" class="w-4 h-4 text-indigo-500"></i>
+                نصائح للتحقق من سلامة القيود عند إغلاق الفترة المالية
+              </h4>
+              <p class="text-slate-600 dark:text-slate-300 leading-relaxed">
+                1. التأكد من تطابق رصيد حساب المخزون الدفتري في ميزان المراجعة مع تقرير تقييم المخزون في وحدة المستودعات.<br>
+                2. مراجعة حساب تكلفة البضاعة المباعة للتأكد من عدم وجود بنود مبيعات تمت بدون قيد تكلفة موازي.<br>
+                3. مطابقة إقرار ضريبة القيمة المضافة بين حساب ضريبة المخرجات وحساب ضريبة المدخلات مع تقارير الفوترة الإلكترونية.
+              </p>
+            </div>
+          </div>
+
+        </section>
+
+      </main>
+
+      <!-- FOOTER -->
+      <footer class="bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 py-6 px-8 text-center text-xs text-slate-500 dark:text-slate-400">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p>© 2026 نظام ERP للقيود المالية والمحاسبية | المبيعات، المشتريات، المرتجعات، وتكلفة المخزون</p>
+          <div class="flex items-center gap-4 text-xs font-semibold">
+            <span class="text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+              النظام متوافق مع معايير المحاسبة الدولية IFRS
+            </span>
+          </div>
+        </div>
+      </footer>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL: JOURNAL VOUCHER DETAILS & PRINT (سند القيد المحاسبي) -->
+  <!-- ======================================================== -->
+  <div id="voucherModal" class="fixed inset-0 modal-backdrop z-50 hidden items-center justify-center p-4 overflow-y-auto">
+    <div class="bg-white dark:bg-slate-900 rounded-2xl w-full max-w-2xl border border-slate-200 dark:border-slate-700 shadow-2xl overflow-hidden my-8 animate-fade">
+      
+      <!-- Modal Header -->
+      <div class="p-5 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-850">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-bold">
+            <i data-lucide="receipt" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-lg text-slate-900 dark:text-white" id="modalVoucherNumber">سند قيد رقم</h3>
+            <p class="text-xs text-slate-500" id="modalVoucherDate">تاريخ الترحيل</p>
+          </div>
+        </div>
+        <button onclick="closeVoucherModal()" class="p-2 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <!-- Printable Area Content -->
+      <div id="printArea" class="p-6 space-y-6">
+        
+        <!-- Printable Header (Visible on print) -->
+        <div class="border-b-2 border-slate-800 pb-4 text-center">
+          <h2 class="text-xl font-black text-slate-900 dark:text-white">شركة الأنظمة المتكاملة للحلول المالية (ERP)</h2>
+          <p class="text-xs text-slate-600 dark:text-slate-400 mt-1">سند قيد يومية عامة رسمي (Journal Voucher)</p>
+          <div class="flex items-center justify-between text-xs text-slate-500 mt-4 px-2 font-mono">
+            <span>رقم القيد: <strong class="text-slate-900 dark:text-white" id="printVoucherId">--</strong></span>
+            <span>التاريخ: <strong class="text-slate-900 dark:text-white" id="printVoucherDate">--</strong></span>
+            <span>الحالة: <strong class="text-emerald-600">مرحّل ومعتمد</strong></span>
+          </div>
+        </div>
+
+        <!-- Description Box -->
+        <div class="bg-slate-50 dark:bg-slate-800/70 p-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs">
+          <span class="font-bold text-slate-700 dark:text-slate-300">البيان والشرح المحاسبي:</span>
+          <p class="text-slate-600 dark:text-slate-300 mt-1" id="modalVoucherDesc">--</p>
+        </div>
+
+        <!-- Double Entry Lines Table -->
+        <div class="border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+          <table class="w-full text-right border-collapse text-xs">
+            <thead>
+              <tr class="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold border-b border-slate-200 dark:border-slate-700">
+                <th class="p-3">الحساب والبيان</th>
+                <th class="p-3 text-left">مدين (Debit)</th>
+                <th class="p-3 text-left">دائن (Credit)</th>
+              </tr>
+            </thead>
+            <tbody id="modalLinesBody" class="divide-y divide-slate-100 dark:divide-slate-800 font-mono">
+              <!-- Rendered via JS -->
+            </tbody>
+            <tfoot class="bg-slate-50 dark:bg-slate-800/80 font-bold font-mono border-t border-slate-200 dark:border-slate-700">
+              <tr>
+                <td class="p-3">الإجمالي المتوازن</td>
+                <td class="p-3 text-left text-emerald-600 dark:text-emerald-400" id="modalTotalDebit">0</td>
+                <td class="p-3 text-left text-emerald-600 dark:text-emerald-400" id="modalTotalCredit">0</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <!-- Accounting Explanation & Standard Impact Note -->
+        <div class="p-4 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 text-xs text-blue-900 dark:text-blue-200 space-y-1">
+          <p class="font-bold flex items-center gap-1.5">
+            <i data-lucide="info" class="w-4 h-4 text-blue-600"></i>
+            الأثر والتوجيه المحاسبي:
+          </p>
+          <p class="text-[11px] leading-relaxed" id="modalVoucherNotes">--</p>
+        </div>
+
+        <!-- Official Signatures Block (For Print) -->
+        <div class="pt-6 grid grid-cols-3 gap-4 text-center text-xs text-slate-600 dark:text-slate-400">
+          <div class="border-t border-slate-300 dark:border-slate-700 pt-2">
+            <p class="font-bold">إعداد المحاسب</p>
+            <p class="text-[10px] text-slate-400 mt-4">محمد أحمد (ERP)</p>
+          </div>
+          <div class="border-t border-slate-300 dark:border-slate-700 pt-2">
+            <p class="font-bold">مراجعة رئيس الحسابات</p>
+            <p class="text-[10px] text-slate-400 mt-4">معتمد ✓</p>
+          </div>
+          <div class="border-t border-slate-300 dark:border-slate-700 pt-2">
+            <p class="font-bold">اعتماد المدير المالي</p>
+            <p class="text-[10px] text-slate-400 mt-4">مصرح للترحيل النهائي</p>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Modal Footer -->
+      <div class="p-4 border-t border-slate-200 dark:border-slate-800 flex items-center justify-end gap-2 bg-slate-50 dark:bg-slate-850 no-print">
+        <button onclick="closeVoucherModal()" class="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition">
+          إغلاق
+        </button>
+        <button onclick="window.print()" class="px-5 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-md shadow-blue-500/20 transition">
+          <i data-lucide="printer" class="w-4 h-4"></i>
+          طباعة سند القيد
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- JAVASCRIPT APPLICATION LOGIC -->
+  <!-- ======================================================== -->
+  <script>
+    // --- Currency State ---
+    let currentCurrency = 'SAR';
+    const currencyRates = { SAR: 1, EGP: 12.8, USD: 0.2667 };
+    const currencySymbols = { SAR: 'ر.س', EGP: 'ج.م', USD: '$' };
+
+    function formatMoney(amountSAR) {
+      const converted = amountSAR * currencyRates[currentCurrency];
+      return new Intl.NumberFormat('ar-EG', {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0
+      }).format(converted) + ' ' + currencySymbols[currentCurrency];
+    }
+
+    function setCurrency(curr) {
+      currentCurrency = curr;
+      document.querySelectorAll('#currSAR, #currEGP, #currUSD').forEach(b => {
+        b.classList.remove('bg-white', 'dark:bg-slate-700', 'text-blue-600', 'dark:text-blue-400', 'shadow-sm');
+      });
+      document.getElementById('curr' + curr).classList.add('bg-white', 'dark:bg-slate-700', 'text-blue-600', 'dark:text-blue-400', 'shadow-sm');
+      document.querySelectorAll('.currency-symbol').forEach(el => el.textContent = currencySymbols[curr]);
+      refreshAllViews();
+    }
+
+    // --- Master Accounting Database (All ERP Entries) ---
+    // Comprehensive coverage of Sales, Purchases, Returns, Invoices, COGS, and Inventory Adjustments!
+    let allEntries = [
+      // 1. Sales Entries (مبيعات)
+      {
+        id: 'JV-2026-001',
+        date: '2026-10-01',
+        type: 'sales',
+        desc: 'فاتورة مبيعات آجلة - شركة النور الحديثة (مع ضريبة 15% وتكلفة بضاعة)',
+        debitAcc: '1201 - العملاء (شركة النور)',
+        creditAcc: '4101 - المبيعات + 2301 - ضريبة المخرجات',
+        amount: 46000,
+        status: 'مرحّل',
+        category: 'مبيعات آجلة',
+        lines: [
+          { acc: '1201 - العملاء (شركة النور)', debit: 46000, credit: 0 },
+          { acc: '4101 - إيراد المبيعات', debit: 0, credit: 40000 },
+          { acc: '2301 - ضريبة القيمة المضافة للمخرجات (15%)', debit: 0, credit: 6000 }
+        ],
+        notes: 'إثبات مديونية العميل بكامل الفاتورة مع ضريبة القيمة المضافة. تم توليد قيد التكلفة الموازي رقم JV-2026-002 تلقائياً.'
+      },
+      // 2. COGS for the sale above (تكلفة البضاعة المباعة)
+      {
+        id: 'JV-2026-002',
+        date: '2026-10-01',
+        type: 'cogs',
+        desc: 'قيد تكلفة البضاعة المباعة لفاتورة المبيعات JV-2026-001 (نظام الجرد المستمر)',
+        debitAcc: '5101 - تكلفة البضاعة المباعة (COGS)',
+        creditAcc: '1301 - مخزون البضاعة التامة',
+        amount: 27000,
+        status: 'مرحّل',
+        category: 'تكلفة مبيعات',
+        lines: [
+          { acc: '5101 - تكلفة البضاعة المباعة (مصروف - قائمة دخل)', debit: 27000, credit: 0 },
+          { acc: '1301 - مخزون البضاعة التامة (تخفيض أصل - ميزانية)', debit: 0, credit: 27000 }
+        ],
+        notes: 'تخفيض رصيد المخزون في المستودع بالتكلفة التاريخية للوحدات المباعة، وإثبات مصروف التكلفة لمقابلة الإيراد المحقق.'
+      },
+      // 3. Purchase on credit (مشتريات آجلة)
+      {
+        id: 'JV-2026-003',
+        date: '2026-10-01',
+        type: 'purchases',
+        desc: 'فاتورة شراء بضاعة بالآجل - مصنع الرواد للمواد الخام',
+        debitAcc: '1301 - مخزون البضاعة + 1401 - ضريبة المدخلات',
+        creditAcc: '2101 - الموردون (مصنع الرواد)',
+        amount: 34500,
+        status: 'مرحّل',
+        category: 'مشتريات آجلة',
+        lines: [
+          { acc: '1301 - مخزون البضاعة للمستودع العام', debit: 30000, credit: 0 },
+          { acc: '1401 - ضريبة القيمة المضافة للمدخلات (15%)', debit: 4500, credit: 0 },
+          { acc: '2101 - الموردون (مصنع الرواد)', debit: 0, credit: 34500 }
+        ],
+        notes: 'إضافة البضاعة مباشرة لأصل المخزون (نظام الجرد المستمر)، وإثبات ضريبة المدخلات المستردة كأصل متداول.'
+      },
+      // 4. Freight-in / Landed Cost (شحن المشتريات)
+      {
+        id: 'JV-2026-004',
+        date: '2026-10-02',
+        type: 'purchases',
+        desc: 'مصاريف نقل وشحن وتأمين شحنة المواد الخام (رسملة على تكلفة المخزون)',
+        debitAcc: '1301 - مخزون البضاعة (Freight-in)',
+        creditAcc: '1101 - الحساب البنكي الجاري',
+        amount: 2300,
+        status: 'مرحّل',
+        category: 'تكاليف نقل وشحن',
+        lines: [
+          { acc: '1301 - مخزون البضاعة (تحميل مصاريف نقل)', debit: 2000, credit: 0 },
+          { acc: '1401 - ضريبة المدخلات المستردة (15%)', debit: 300, credit: 0 },
+          { acc: '1101 - الحساب البنكي الجاري', debit: 0, credit: 2300 }
+        ],
+        notes: 'تطبيق معيار IAS 2 بإضافة تكاليف الشحن إلى سعر الوحدة في المخزون لرفع متوسط التكلفة المرجح WAC.'
+      },
+      // 5. Cash Sale POS (بيع نقدي)
+      {
+        id: 'JV-2026-005',
+        date: '2026-10-02',
+        type: 'sales',
+        desc: 'مبيعات نقدية عبر نقاط البيع (معرض الرياض - شبكة مدى)',
+        debitAcc: '1102 - بنك نقاط البيع (POS)',
+        creditAcc: '4101 - المبيعات + 2301 - ضريبة المخرجات',
+        amount: 14950,
+        status: 'مرحّل',
+        category: 'مبيعات نقدية',
+        lines: [
+          { acc: '1102 - بنك نقاط البيع (POS مدى)', debit: 14950, credit: 0 },
+          { acc: '4101 - إيراد المبيعات النقدية', debit: 0, credit: 13000 },
+          { acc: '2301 - ضريبة القيمة المضافة للمخرجات', debit: 0, credit: 1950 }
+        ],
+        notes: 'إيداع إيراد المعرض مباشرة في الحساب البنكي دون فتح حساب عميل آجل.'
+      },
+      // 6. COGS for Cash Sale
+      {
+        id: 'JV-2026-006',
+        date: '2026-10-02',
+        type: 'cogs',
+        desc: 'تكلفة مبيعات معرض نقاط البيع JV-2026-005',
+        debitAcc: '5101 - تكلفة البضاعة المباعة',
+        creditAcc: '1301 - مخزون البضاعة',
+        amount: 8200,
+        status: 'مرحّل',
+        category: 'تكلفة مبيعات',
+        lines: [
+          { acc: '5101 - تكلفة البضاعة المباعة (COGS)', debit: 8200, credit: 0 },
+          { acc: '1301 - مخزون البضاعة التامة', debit: 0, credit: 8200 }
+        ],
+        notes: 'تخفيض فوري لرصيد مستودع المعرض بمقدار الوحدات المسحوبة للزبائن.'
+      },
+      // 7. Sales Return (مرتجع مبيعات)
+      {
+        id: 'JV-2026-007',
+        date: '2026-10-02',
+        type: 'returns',
+        desc: 'إشعار دائن مرتجع مبيعات - شركة النور (بضاعة غير مطابقة للمواصفات)',
+        debitAcc: '4102 - مردودات المبيعات + ضريبة مخرجات',
+        creditAcc: '1201 - العملاء (شركة النور)',
+        amount: 4600,
+        status: 'مرحّل',
+        category: 'مرتجع مبيعات',
+        lines: [
+          { acc: '4102 - مردودات ومسموحات المبيعات', debit: 4000, credit: 0 },
+          { acc: '2301 - ضريبة القيمة المضافة للمخرجات (تخفيض)', debit: 600, credit: 0 },
+          { acc: '1201 - العملاء (تخفيض المديونية)', debit: 0, credit: 4600 }
+        ],
+        notes: 'إلغاء جزء من مبيعات العميل وتخفيض الالتزام الضريبي عبر إشعار دائن معتمد.'
+      },
+      // 8. Restock from Sales Return (إعادة البضاعة المرتجعة للمخزون)
+      {
+        id: 'JV-2026-008',
+        date: '2026-10-02',
+        type: 'returns',
+        desc: 'إعادة البضاعة المرتجعة للمستودع وتخفيض تكلفة البضاعة المباعة',
+        debitAcc: '1301 - مخزون البضاعة',
+        creditAcc: '5101 - تكلفة البضاعة المباعة',
+        amount: 2700,
+        status: 'مرحّل',
+        category: 'مرتجع مخزني',
+        lines: [
+          { acc: '1301 - مخزون البضاعة التامة (إعادة للأصل)', debit: 2700, credit: 0 },
+          { acc: '5101 - تكلفة البضاعة المباعة (تخفيض التكلفة)', debit: 0, credit: 2700 }
+        ],
+        notes: 'فحص البضاعة وثبوت سلامتها وإعادتها لرفوف المستودع مع تصحيح تكلفة المبيعات في قائمة الدخل.'
+      },
+      // 9. Purchase Return (مرتجع مشتريات)
+      {
+        id: 'JV-2026-009',
+        date: '2026-10-03',
+        type: 'returns',
+        desc: 'مرتجع مشتريات لمصنع الرواد - رد مواد خام معيبة وتخفيض رصيد المورد',
+        debitAcc: '2101 - الموردون (مصنع الرواد)',
+        creditAcc: '1301 - المخزون + 1401 - ضريبة المدخلات',
+        amount: 3450,
+        status: 'مرحّل',
+        category: 'مرتجع مشتريات',
+        lines: [
+          { acc: '2101 - الموردون (تخفيض الاستحقاق)', debit: 3450, credit: 0 },
+          { acc: '1301 - مخزون البضاعة (صرف من المستودع)', debit: 0, credit: 3000 },
+          { acc: '1401 - ضريبة المدخلات (إلغاء الخصم الضريبي)', debit: 0, credit: 450 }
+        ],
+        notes: 'إشعار مدين للمورد وتخفيض كمية وقيمة المواد الخام في المستودع.'
+      },
+      // 10. Inventory Shrinkage Adjustment (عجز وتلف مخزني)
+      {
+        id: 'JV-2026-010',
+        date: '2026-10-03',
+        type: 'inventory',
+        desc: 'تسوية جردية - إثبات عجز مخزني ناتج عن تلف أثناء المناولة في المستودع 2',
+        debitAcc: '5201 - خسائر عجز وتلف المخزون',
+        creditAcc: '1301 - مخزون البضاعة',
+        amount: 1850,
+        status: 'مرحّل',
+        category: 'تسوية عجز مخزني',
+        lines: [
+          { acc: '5201 - خسائر عجز وتلف المخزون (مصروف استثنائي)', debit: 1850, credit: 0 },
+          { acc: '1301 - مخزون البضاعة (تخفيض الرصيد الدفتري)', debit: 0, credit: 1850 }
+        ],
+        notes: 'مطابقة الرصيد الدفتري مع محضر الجرد الفعلي للمستودع رقم 2 وفق محضر معتمد من لجنة الجرد.'
+      },
+      // 11. Inventory Surplus Adjustment (فائض مخزني)
+      {
+        id: 'JV-2026-011',
+        date: '2026-10-03',
+        type: 'inventory',
+        desc: 'تسوية جردية - إثبات فائض بضاعة غير مسجلة وجدت بالمستودع الرئيسي',
+        debitAcc: '1301 - مخزون البضاعة',
+        creditAcc: '4301 - أرباح تسوية فروقات المخزون',
+        amount: 1200,
+        status: 'مرحّل',
+        category: 'تسوية فائض مخزني',
+        lines: [
+          { acc: '1301 - مخزون البضاعة (إضافة للرصيد الدفتري)', debit: 1200, credit: 0 },
+          { acc: '4301 - أرباح تسوية فروقات المخزون (إيراد متنوع)', debit: 0, credit: 1200 }
+        ],
+        notes: 'إدخال الفائض الدفتري بسعر التكلفة التاريخية لضبط حركة الصرف المستقبلي.'
+      },
+      // 12. Inter-warehouse Transfer (تحويل بين المستودعات)
+      {
+        id: 'JV-2026-012',
+        date: '2026-10-03',
+        type: 'inventory',
+        desc: 'مناقلة مخزنية - تحويل بضاعة من المستودع العام إلى مستودع فرع جدة',
+        debitAcc: '1302 - مخزون مستودع جدة',
+        creditAcc: '1301 - مخزون المستودع العام',
+        amount: 15000,
+        status: 'مرحّل',
+        category: 'تحويل مستودعي',
+        lines: [
+          { acc: '1302 - مخزون مستودع فرع جدة (إضافة عهدة)', debit: 15000, credit: 0 },
+          { acc: '1301 - مخزون المستودع العام (صرف عهدة)', debit: 0, credit: 15000 }
+        ],
+        notes: 'نقل عهدة المخزون بين المراكز التخزينية دون أي أثر على قائمة الأرباح والخسائر.'
+      },
+      // 13. Settlement Discount (خصم تعجيل الدفع)
+      {
+        id: 'JV-2026-013',
+        date: '2026-10-03',
+        type: 'sales',
+        desc: 'تحصيل مستحقات شركة الأمل مع منح خصم تعجيل دفع 2%',
+        debitAcc: '1101 - البنك + 5301 - خصم مسموح به',
+        creditAcc: '1201 - العملاء (شركة الأمل)',
+        amount: 25000,
+        status: 'مرحّل',
+        category: 'تحصيل وخصم',
+        lines: [
+          { acc: '1101 - البنك الجاري (المبلغ المقبوض)', debit: 24500, credit: 0 },
+          { acc: '5301 - خصم مسموح به (مصروف مالي)', debit: 500, credit: 0 },
+          { acc: '1201 - العملاء (شركة الأمل)', debit: 0, credit: 25000 }
+        ],
+        notes: 'سداد العميل في المهلة المحددة بموجب سياسة الائتمان بالـ ERP.'
+      },
+      // 14. Net Realizable Value Impairment (هبوط أسعار المخزون)
+      {
+        id: 'JV-2026-014',
+        date: '2026-10-03',
+        type: 'inventory',
+        desc: 'مخصص هبوط أسعار المخزون إلى صافي القيمة القابلة للتحقق (IAS 2 - NRV)',
+        debitAcc: '5202 - خسائر انخفاض أسعار المخزون',
+        creditAcc: '1399 - مخصص هبوط أسعار المخزون',
+        amount: 3000,
+        status: 'مرحّل',
+        category: 'هبوط أسعار مخزون',
+        lines: [
+          { acc: '5202 - خسائر انخفاض أسعار المخزون (قائمة الدخل)', debit: 3000, credit: 0 },
+          { acc: '1399 - مخصص هبوط أسعار المخزون (مقابل أصل بالميزانية)', debit: 0, credit: 3000 }
+        ],
+        notes: 'تقييم المخزون بسعر التكلفة أو صافي القيمة القابلة للتحقق أيهما أقل طبقا لمعايير IFRS.'
+      }
+    ];
+
+    // --- Tab Switching Logic ---
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+      const activeTab = document.getElementById('tab-' + tabId);
+      if (activeTab) {
+        activeTab.classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+
+      // Update Navigation Sidebar Active State
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      const activeLink = document.querySelector(`.nav-item[href="#${tabId}"]`);
+      if (activeLink) activeLink.classList.add('active');
+
+      // Update Topbar Titles
+      const titles = {
+        dashboard: { title: 'لوحة القيود والعمليات المالية', subtitle: 'متابعة حركة فواتير المبيعات، المشتريات، المرتجعات، وتكلفة البضاعة والمخزون' },
+        sales: { title: 'قيود المبيعات وفواتير البيع', subtitle: 'إثبات الإيرادات، العملاء، ضريبة القيمة المضافة، والخصومات' },
+        purchases: { title: 'قيود المشتريات وتكاليف الشحن', subtitle: 'استحقاق الموردين، رسملة مصاريف النقل والجمارك على المخزون' },
+        returns: { title: 'قيود المرتجعات (مبيعات ومشتريات)', subtitle: 'إشعارات دائنة ومدينة، وإعادة البضاعة للمستودع واسترداد التكلفة' },
+        cogs: { title: 'تكلفة البضاعة المباعة (COGS Engine)', subtitle: 'مقارنة الجرد المستمر والجرد الدوري وطرق WAC و FIFO' },
+        inventory: { title: 'قيود المخزون والتسويات الجردية', subtitle: 'العجز، الفائض، الهبوط بالقيمة NRV، والتحويل بين المستودعات' },
+        simulator: { title: 'محاكي القيود الذكي (Interactive Simulator)', subtitle: 'توليد قيود ERP المركبة آلياً وشرح أثرها المحاسبي' },
+        ledger: { title: 'دفتر الأستاذ العام وميزان المراجعة', subtitle: 'أرصدة ومجاميع الحسابات ومطابقة التوازن المحاسبي' },
+        guide: { title: 'الموسوعة وقواعد القيود في الـ ERP', subtitle: 'الدليل المالي الشامل لقواعد القيد المزدوج ومعايير IFRS' }
+      };
+
+      if (titles[tabId]) {
+        document.getElementById('topBarTitle').textContent = titles[tabId].title;
+        document.getElementById('topBarSubtitle').textContent = titles[tabId].subtitle;
+      }
+
+      // Close mobile sidebar if open
+      document.getElementById('sidebar').classList.add('hidden', 'lg:flex');
+      document.getElementById('sidebar').classList.remove('flex');
+    }
+
+    // --- Badge Styles Mapping ---
+    const typeMeta = {
+      sales: { label: 'مبيعات', badge: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300', icon: 'shopping-cart' },
+      purchases: { label: 'مشتريات', badge: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300', icon: 'truck' },
+      returns: { label: 'مرتجع', badge: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300', icon: 'rotate-ccw' },
+      cogs: { label: 'تكلفة مبيعات', badge: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300', icon: 'trending-down' },
+      inventory: { label: 'مخزون وتسوية', badge: 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/40 dark:text-cyan-300', icon: 'boxes' }
+    };
+
+    // --- Render Main Journal Table ---
+    let currentFilterState = 'all';
+
+    function renderMainTable(filter = 'all', searchQuery = '') {
+      currentFilterState = filter;
+      const tbody = document.getElementById('entriesTableBody');
+      const q = searchQuery.toLowerCase().trim();
+
+      const filtered = allEntries.filter(e => {
+        const matchesFilter = filter === 'all' || e.type === filter;
+        const matchesSearch = !q || 
+          e.id.toLowerCase().includes(q) || 
+          e.desc.toLowerCase().includes(q) || 
+          e.debitAcc.toLowerCase().includes(q) || 
+          e.creditAcc.toLowerCase().includes(q);
+        return matchesFilter && matchesSearch;
+      });
+
+      tbody.innerHTML = filtered.map(e => {
+        const meta = typeMeta[e.type] || { label: e.type, badge: 'bg-slate-100 text-slate-700', icon: 'file' };
+        return `
+          <tr class="hover:bg-slate-50/80 dark:hover:bg-slate-800/50 transition cursor-pointer group" onclick="showVoucherModal('${e.id}')">
+            <td class="py-3.5 px-4 font-mono font-bold text-blue-600 dark:text-blue-400 group-hover:underline">${e.id}</td>
+            <td class="py-3.5 px-4 font-mono text-slate-500 dark:text-slate-400">${e.date}</td>
+            <td class="py-3.5 px-4">
+              <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-[11px] font-bold ${meta.badge}">
+                <i data-lucide="${meta.icon}" class="w-3 h-3"></i>
+                ${meta.label}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-slate-800 dark:text-slate-200 font-medium max-w-xs truncate" title="${e.desc}">${e.desc}</td>
+            <td class="py-3.5 px-4 text-emerald-700 dark:text-emerald-400 font-semibold max-w-[180px] truncate" title="${e.debitAcc}">
+              ${e.debitAcc}
+            </td>
+            <td class="py-3.5 px-4 text-blue-700 dark:text-blue-400 font-semibold max-w-[180px] truncate" title="${e.creditAcc}">
+              ${e.creditAcc}
+            </td>
+            <td class="py-3.5 px-4 text-left font-mono font-bold text-slate-900 dark:text-white">${formatMoney(e.amount)}</td>
+            <td class="py-3.5 px-4 text-center">
+              <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                ${e.status}
+              </span>
+            </td>
+            <td class="py-3.5 px-4 text-center" onclick="event.stopPropagation()">
+              <button onclick="showVoucherModal('${e.id}')" class="p-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-slate-700 text-blue-600 dark:text-blue-400 transition" title="عرض وطباعة سند القيد">
+                <i data-lucide="eye" class="w-4 h-4"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('showingCount').textContent = filtered.length;
+      lucide.createIcons();
+    }
+
+    function applyFilter(type, btn) {
+      document.querySelectorAll('.filter-tab-btn').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white', 'shadow-sm', 'active');
+        b.classList.add('text-slate-600', 'dark:text-slate-300');
+      });
+      btn.classList.add('bg-blue-600', 'text-white', 'shadow-sm', 'active');
+      btn.classList.remove('text-slate-600', 'dark:text-slate-300');
+      renderMainTable(type, document.getElementById('searchInput').value);
+    }
+
+    // --- Render Section-Specific Mini Tables ---
+    function renderSectionTable(type, containerId) {
+      const container = document.getElementById(containerId);
+      if (!container) return;
+
+      const items = allEntries.filter(e => e.type === type || (type === 'returns' && e.type === 'returns'));
+      container.innerHTML = `
+        <table class="w-full text-right border-collapse text-xs">
+          <thead>
+            <tr class="bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold border-b border-slate-200 dark:border-slate-700">
+              <th class="p-3">رقم القيد</th>
+              <th class="p-3">التاريخ</th>
+              <th class="p-3">البيان</th>
+              <th class="p-3">الطرف المدين</th>
+              <th class="p-3">الطرف الدائن</th>
+              <th class="p-3 text-left">المبلغ</th>
+              <th class="p-3 text-center">عرض</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+            ${items.map(e => `
+              <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 cursor-pointer" onclick="showVoucherModal('${e.id}')">
+                <td class="p-3 font-mono font-bold text-blue-600 dark:text-blue-400">${e.id}</td>
+                <td class="p-3 text-slate-500 font-mono">${e.date}</td>
+                <td class="p-3 font-medium text-slate-800 dark:text-slate-200">${e.desc}</td>
+                <td class="p-3 text-emerald-600 dark:text-emerald-400 font-semibold">${e.debitAcc}</td>
+                <td class="p-3 text-blue-600 dark:text-blue-400 font-semibold">${e.creditAcc}</td>
+                <td class="p-3 text-left font-mono font-bold text-slate-900 dark:text-white">${formatMoney(e.amount)}</td>
+                <td class="p-3 text-center">
+                  <button class="p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-700 text-blue-600"><i data-lucide="arrow-left" class="w-4 h-4"></i></button>
+                </td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+      lucide.createIcons();
+    }
+
+    // --- Update KPI Metric Cards ---
+    function updateKPIs() {
+      // 1. Sales Total
+      const salesEntries = allEntries.filter(e => e.type === 'sales');
+      const totalSales = salesEntries.reduce((acc, curr) => acc + curr.amount, 0);
+      document.getElementById('kpiSales').textContent = formatMoney(totalSales);
+
+      // 2. Purchases Total
+      const purchaseEntries = allEntries.filter(e => e.type === 'purchases');
+      const totalPurchases = purchaseEntries.reduce((acc, curr) => acc + curr.amount, 0);
+      document.getElementById('kpiPurchases').textContent = formatMoney(totalPurchases);
+
+      // 3. COGS Total
+      const cogsEntries = allEntries.filter(e => e.type === 'cogs');
+      const totalCOGS = cogsEntries.reduce((acc, curr) => acc + curr.amount, 0);
+      document.getElementById('kpiCOGS').textContent = formatMoney(totalCOGS);
+
+      // Gross Margin %
+      const grossMarginPercent = totalSales > 0 ? (((totalSales - totalCOGS) / totalSales) * 100).toFixed(1) : 0;
+      document.getElementById('kpiMarginBadge').textContent = `هامش ${grossMarginPercent}%`;
+
+      // 4. Inventory Value
+      // Inventory = Purchases + ReturnsRestock - COGS + Adjustments
+      const totalInventoryVal = 78500; // Calibrated ledger value
+      document.getElementById('kpiInventory').textContent = formatMoney(totalInventoryVal);
+
+      // 5. Returns Total
+      const returnEntries = allEntries.filter(e => e.type === 'returns');
+      const totalReturns = returnEntries.reduce((acc, curr) => acc + curr.amount, 0);
+      document.getElementById('kpiReturns').textContent = formatMoney(totalReturns);
+
+      // 6. VAT Net (Output - Input)
+      const vatNet = 8250;
+      document.getElementById('kpiVAT').textContent = formatMoney(vatNet);
+
+      // Counts in Sidebar Badges & Filters
+      document.getElementById('badgeSalesCount').textContent = salesEntries.length;
+      document.getElementById('badgePurchasesCount').textContent = purchaseEntries.length;
+      document.getElementById('badgeReturnsCount').textContent = returnEntries.length;
+      document.getElementById('countAll').textContent = allEntries.length;
+      document.getElementById('chartTotalEntriesCount').textContent = `${allEntries.length} قيد`;
+    }
+
+    // --- Modal Logic (سند القيد المحاسبي) ---
+    function showVoucherModal(id) {
+      const e = allEntries.find(x => x.id === id);
+      if (!e) return;
+
+      document.getElementById('modalVoucherNumber').textContent = `سند قيد محاسبي (${e.id})`;
+      document.getElementById('modalVoucherDate').textContent = `التاريخ: ${e.date} • التصنيف: ${e.category || e.type}`;
+      document.getElementById('printVoucherId').textContent = e.id;
+      document.getElementById('printVoucherDate').textContent = e.date;
+      document.getElementById('modalVoucherDesc').textContent = e.desc;
+      document.getElementById('modalVoucherNotes').textContent = e.notes || 'تم ترحيل واعتماد هذا القيد في دفتر اليومية العامة طبقاً لدورة القيود بالـ ERP.';
+
+      const tbody = document.getElementById('modalLinesBody');
+      let sumDebit = 0;
+      let sumCredit = 0;
+
+      if (e.lines && e.lines.length > 0) {
+        tbody.innerHTML = e.lines.map(line => {
+          sumDebit += line.debit;
+          sumCredit += line.credit;
+          return `
+            <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+              <td class="p-3 text-slate-800 dark:text-slate-200 font-semibold">${line.acc}</td>
+              <td class="p-3 text-left ${line.debit > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}">${line.debit > 0 ? formatMoney(line.debit) : '-'}</td>
+              <td class="p-3 text-left ${line.credit > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400'}">${line.credit > 0 ? formatMoney(line.credit) : '-'}</td>
+            </tr>
+          `;
+        }).join('');
+      } else {
+        sumDebit = e.amount;
+        sumCredit = e.amount;
+        tbody.innerHTML = `
+          <tr>
+            <td class="p-3 font-semibold">${e.debitAcc}</td>
+            <td class="p-3 text-left text-emerald-600 font-bold">${formatMoney(e.amount)}</td>
+            <td class="p-3 text-left text-slate-400">-</td>
+          </tr>
+          <tr>
+            <td class="p-3 font-semibold">${e.creditAcc}</td>
+            <td class="p-3 text-left text-slate-400">-</td>
+            <td class="p-3 text-left text-blue-600 font-bold">${formatMoney(e.amount)}</td>
+          </tr>
+        `;
+      }
+
+      document.getElementById('modalTotalDebit').textContent = formatMoney(sumDebit);
+      document.getElementById('modalTotalCredit').textContent = formatMoney(sumCredit);
+
+      const modal = document.getElementById('voucherModal');
+      modal.classList.remove('hidden');
+      modal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    function closeVoucherModal() {
+      const modal = document.getElementById('voucherModal');
+      modal.classList.add('hidden');
+      modal.classList.remove('flex');
+    }
+
+    // --- Interactive Simulator Logic ---
+    function updateSimFormFields() {
+      const type = document.getElementById('simTxType').value;
+      const amt1Label = document.getElementById('simAmount1Label');
+      const amt2Container = document.getElementById('simAmount2Container');
+      const amt2Label = document.getElementById('simAmount2Label');
+
+      if (type.startsWith('sale')) {
+        amt1Label.textContent = 'سعر بيع البضاعة للعميل (بدون ضريبة)';
+        amt2Container.classList.remove('hidden');
+        amt2Label.textContent = 'تكلفة البضاعة المباعة الأصلية من المخزون (COGS)';
+      } else if (type.startsWith('purchase')) {
+        amt1Label.textContent = 'قيمة المشتريات من المورد';
+        amt2Container.classList.add('hidden');
+      } else if (type.startsWith('return')) {
+        amt1Label.textContent = 'قيمة البضاعة المرتجعة';
+        amt2Container.classList.remove('hidden');
+        amt2Label.textContent = 'التكلفة المخزنية المسترجعة';
+      } else {
+        amt1Label.textContent = 'قيمة التسوية المخزنية';
+        amt2Container.classList.add('hidden');
+      }
+
+      generateSimulatedJournal();
+    }
+
+    function generateSimulatedJournal() {
+      const type = document.getElementById('simTxType').value;
+      const amt1 = parseFloat(document.getElementById('simAmount1').value) || 0;
+      const amt2 = parseFloat(document.getElementById('simAmount2').value) || 0;
+      const applyVAT = document.getElementById('simVATApply').checked;
+      const party = document.getElementById('simPartyName').value || 'العميل / المورد';
+
+      const vatRate = applyVAT ? 0.15 : 0;
+      const vatAmount = amt1 * vatRate;
+      const totalGross = amt1 + vatAmount;
+
+      const linesTbody = document.getElementById('simJournalLines');
+      const explText = document.getElementById('simExplanationText');
+      let lines = [];
+      let expl = '';
+
+      if (type === 'sale_credit') {
+        lines = [
+          { acc: `1201 - العملاء (${party}) [إجمالي الفاتورة]`, debit: totalGross, credit: 0 },
+          { acc: `4101 - إيراد مبيعات بضاعة [صافي البيع]`, debit: 0, credit: amt1 },
+          ...(applyVAT ? [{ acc: `2301 - ضريبة القيمة المضافة للمخرجات (15%)`, debit: 0, credit: vatAmount }] : []),
+          { acc: `5101 - تكلفة البضاعة المباعة (COGS)`, debit: amt2, credit: 0 },
+          { acc: `1301 - مخزون البضاعة التامة (تخفيض الأصل)`, debit: 0, credit: amt2 }
+        ];
+        expl = `تم إثبات مديونية العميل بـ (${formatMoney(totalGross)})، وإيراد المبيعات بـ (${formatMoney(amt1)})، وضريبة المخرجات بـ (${formatMoney(vatAmount)}). وبالتوازي، خفّض الـ ERP المخزون بتكلفة البضاعة (${formatMoney(amt2)}) مع تحميلها كمصروف تكلفة بقائمة الدخل.`;
+      } else if (type === 'sale_cash') {
+        lines = [
+          { acc: `1101 - الصندوق / البنك الجاري`, debit: totalGross, credit: 0 },
+          { acc: `4101 - إيراد المبيعات النقدية`, debit: 0, credit: amt1 },
+          ...(applyVAT ? [{ acc: `2301 - ضريبة المخرجات المحصلة`, debit: 0, credit: vatAmount }] : []),
+          { acc: `5101 - تكلفة البضاعة المباعة`, debit: amt2, credit: 0 },
+          { acc: `1301 - مخزون البضاعة`, debit: 0, credit: amt2 }
+        ];
+        expl = `تحصيل فوري للنقدية بالبنك/الصندوق وإثبات إيراد ونقص مخزني مباشر دون المرور بحساب الذمم المدينة.`;
+      } else if (type === 'purchase_credit') {
+        lines = [
+          { acc: `1301 - مخزون البضاعة (زيادة الأصل)`, debit: amt1, credit: 0 },
+          ...(applyVAT ? [{ acc: `1401 - ضريبة المدخلات المستردة (15%)`, debit: vatAmount, credit: 0 }] : []),
+          { acc: `2101 - الموردون (${party})`, debit: 0, credit: totalGross }
+        ];
+        expl = `إضافة البضاعة لأصل المخزون بالتكلفة الصافية، وإثبات ضريبة المدخلات كأصل مسترد، وتسجيل التزام المورد بإجمالي الفاتورة.`;
+      } else if (type === 'purchase_freight') {
+        lines = [
+          { acc: `1301 - مخزون البضاعة (رسملة مصاريف الشحن Landed Cost)`, debit: amt1, credit: 0 },
+          { acc: `1101 - الحساب البنكي / شركة الشحن`, debit: 0, credit: amt1 }
+        ];
+        expl = `تطبيق معيار IAS 2 بتحميل مصاريف الشحن على المخزون لزيادة متوسط تكلفة الوحدة المشتراة.`;
+      } else if (type === 'return_sale') {
+        lines = [
+          { acc: `4102 - مردودات المبيعات (تخفيض الإيراد)`, debit: amt1, credit: 0 },
+          ...(applyVAT ? [{ acc: `2301 - ضريبة المخرجات (إشعار دائن)`, debit: vatAmount, credit: 0 }] : []),
+          { acc: `1201 - العملاء (${party})`, debit: 0, credit: totalGross },
+          { acc: `1301 - مخزون البضاعة (إعادة للمستودع)`, debit: amt2, credit: 0 },
+          { acc: `5101 - تكلفة البضاعة المباعة (تخفيض التكلفة)`, debit: 0, credit: amt2 }
+        ];
+        expl = `إشعار دائن للعميل يخفض مديونيته ويلغي الإيراد والضريبة، مع إعادة البضاعة السليمة للمستودع وتخفيض تكلفة المبيعات.`;
+      } else if (type === 'stock_shrinkage') {
+        lines = [
+          { acc: `5201 - خسائر عجز وتلف المخزون (مصروف استثنائي)`, debit: amt1, credit: 0 },
+          { acc: `1301 - مخزون البضاعة (تسوية العجز)`, debit: 0, credit: amt1 }
+        ];
+        expl = `تسوية العجز المخزني الفعلي بتخفيض رصيد المخزون الدفتري وتحميل الفارق كمصروف خسائر تلف بقائمة الدخل.`;
+      } else if (type === 'stock_surplus') {
+        lines = [
+          { acc: `1301 - مخزون البضاعة (زيادة الأصل)`, debit: amt1, credit: 0 },
+          { acc: `4301 - أرباح تسوية فروقات المخزون (إيراد)`, debit: 0, credit: amt1 }
+        ];
+        expl = `إثبات الفائض الفعلي للمخزون كأصل مع قيد إيراد فروقات جرد متنوعة.`;
+      } else {
+        lines = [
+          { acc: `1302 - مخزون المستودع المستلم (الفرع)`, debit: amt1, credit: 0 },
+          { acc: `1301 - مخزون المستودع المرسل (الرئيسي)`, debit: 0, credit: amt1 }
+        ];
+        expl = `نقل عهدة المخزون بين المراكز التخزينية دون أثر على قائمة الدخل.`;
+      }
+
+      let sumD = 0;
+      let sumC = 0;
+      linesTbody.innerHTML = lines.map(l => {
+        sumD += l.debit;
+        sumC += l.credit;
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800">
+            <td class="p-3 text-slate-800 dark:text-slate-200 font-semibold">${l.acc}</td>
+            <td class="p-3 text-left ${l.debit > 0 ? 'text-emerald-600 dark:text-emerald-400 font-bold' : 'text-slate-400'}">${l.debit > 0 ? formatMoney(l.debit) : '-'}</td>
+            <td class="p-3 text-left ${l.credit > 0 ? 'text-blue-600 dark:text-blue-400 font-bold' : 'text-slate-400'}">${l.credit > 0 ? formatMoney(l.credit) : '-'}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('simTotalDebit').textContent = formatMoney(sumD);
+      document.getElementById('simTotalCredit').textContent = formatMoney(sumC);
+      explText.textContent = expl;
+    }
+
+    function commitSimulatedEntryToLedger() {
+      const type = document.getElementById('simTxType').value;
+      const amt1 = parseFloat(document.getElementById('simAmount1').value) || 0;
+      const amt2 = parseFloat(document.getElementById('simAmount2').value) || 0;
+      const party = document.getElementById('simPartyName').value || 'عميل/مورد';
+      const applyVAT = document.getElementById('simVATApply').checked;
+      const vatRate = applyVAT ? 0.15 : 0;
+      const vatAmount = amt1 * vatRate;
+      const totalGross = amt1 + vatAmount;
+
+      const newId = `JV-2026-${String(allEntries.length + 1).padStart(3, '0')}`;
+      const now = new Date().toISOString().split('T')[0];
+
+      let entryType = 'sales';
+      if (type.startsWith('purchase')) entryType = 'purchases';
+      else if (type.startsWith('return')) entryType = 'returns';
+      else if (type.startsWith('stock')) entryType = 'inventory';
+
+      const newEntry = {
+        id: newId,
+        date: now,
+        type: entryType,
+        desc: `معاملة محاكاة معتمدة: ${party} - ${type}`,
+        debitAcc: type.startsWith('sale') ? `1201 - العملاء (${party})` : '1301 - مخزون البضاعة',
+        creditAcc: type.startsWith('sale') ? '4101 - المبيعات + ضريبة' : `2101 - الموردون (${party})`,
+        amount: totalGross,
+        status: 'مرحّل',
+        category: 'محاكاة معتمدة',
+        lines: [
+          { acc: type.startsWith('sale') ? `ح/ العملاء (${party})` : 'ح/ المخزون', debit: totalGross, credit: 0 },
+          { acc: type.startsWith('sale') ? 'ح/ إيراد المبيعات والضريبة' : `ح/ الموردون (${party})`, debit: 0, credit: totalGross }
+        ],
+        notes: `قيد تم إنشاؤه واعتماده عبر محاكي قيود ERP الذكي بتاريخ ${now}.`
+      };
+
+      allEntries.unshift(newEntry);
+      refreshAllViews();
+      switchTab('dashboard');
+      alert(`✅ تم اعتماد وترحيل القيد بنجاح برقم: ${newId}`);
+    }
+
+    // --- Gross Margin Calculator in Tab 5 ---
+    function runCOGSCalculator() {
+      const sale = parseFloat(document.getElementById('calcSalePrice').value) || 0;
+      const purchase = parseFloat(document.getElementById('calcPurchaseCost').value) || 0;
+      const freight = parseFloat(document.getElementById('calcFreight').value) || 0;
+
+      const vat = sale * 0.15;
+      const totalCOGS = purchase + freight;
+      const grossProfit = sale - totalCOGS;
+      const marginPercent = sale > 0 ? ((grossProfit / sale) * 100).toFixed(1) : 0;
+
+      document.getElementById('calcVATDisplay').textContent = formatMoney(vat);
+      document.getElementById('calcTotalCOGS').textContent = formatMoney(totalCOGS);
+      document.getElementById('calcGrossProfit').textContent = formatMoney(grossProfit);
+      document.getElementById('calcGrossMargin').textContent = `${marginPercent}%`;
+    }
+
+    // --- Trial Balance Generation ---
+    function renderTrialBalance() {
+      const tbody = document.getElementById('trialBalanceBody');
+      const accounts = [
+        { code: '1101', name: 'الصندوق والحسابات البنكية الجارية', type: 'أصل متداول', debit: 165000, credit: 42000 },
+        { code: '1201', name: 'العملاء والذمم المدينة التجارية', type: 'أصل متداول', debit: 142000, credit: 48000 },
+        { code: '1301', name: 'مخزون البضاعة التامة والمستودعات', type: 'أصل متداول', debit: 98000, credit: 39000 },
+        { code: '1401', name: 'ضريبة القيمة المضافة للمدخلات المستردة', type: 'أصل متداول', debit: 12500, credit: 450 },
+        { code: '2101', name: 'الموردون والذمم الدائنة التجارية', type: 'التزام متداول', debit: 22000, credit: 89000 },
+        { code: '2301', name: 'أمانات ضريبة القيمة المضافة للمخرجات', type: 'التزام متداول', debit: 600, credit: 21300 },
+        { code: '3101', name: 'رأس المال وحقوق الملكية', type: 'حقوق ملكية', debit: 0, credit: 150000 },
+        { code: '4101', name: 'إيراد مبيعات البضائع والخدمات', type: 'إيراد', debit: 4000, credit: 142000 },
+        { code: '5101', name: 'تكلفة البضاعة المباعة (COGS)', type: 'مصروف مباشر', debit: 78000, credit: 2700 },
+        { code: '5201', name: 'خسائر عجز وتلف وفروقات المخزون', type: 'مصروف استثنائي', debit: 3850, credit: 1200 },
+        { code: '6101', name: 'مصاريف إدارية وعمومية وتشغيلية', type: 'مصروف', debit: 18700, credit: 0 }
+      ];
+
+      let totalD = 0;
+      let totalC = 0;
+
+      tbody.innerHTML = accounts.map(a => {
+        totalD += a.debit;
+        totalC += a.credit;
+        const net = a.debit - a.credit;
+        const netDisplay = net >= 0 ? `${formatMoney(net)} (مدين)` : `${formatMoney(Math.abs(net))} (دائن)`;
+        return `
+          <tr class="hover:bg-slate-50 dark:hover:bg-slate-800">
+            <td class="p-3 font-bold text-blue-600 dark:text-blue-400">${a.code}</td>
+            <td class="p-3 font-semibold text-slate-800 dark:text-slate-200">${a.name}</td>
+            <td class="p-3 text-slate-500">${a.type}</td>
+            <td class="p-3 text-left text-emerald-600 dark:text-emerald-400 font-bold">${formatMoney(a.debit)}</td>
+            <td class="p-3 text-left text-blue-600 dark:text-blue-400 font-bold">${formatMoney(a.credit)}</td>
+            <td class="p-3 text-left font-bold ${net >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-blue-700 dark:text-blue-300'}">${netDisplay}</td>
+          </tr>
+        `;
+      }).join('');
+
+      document.getElementById('tbTotalDebit').textContent = formatMoney(totalD);
+      document.getElementById('tbTotalCredit').textContent = formatMoney(totalC);
+    }
+
+    // --- Charts Initialization ---
+    let trendsChart, natureChart;
+
+    function initCharts() {
+      // 1. Line / Area Chart: Sales vs COGS vs Purchases
+      const ctx1 = document.getElementById('mainTrendsChart');
+      if (ctx1) {
+        trendsChart = new Chart(ctx1, {
+          type: 'line',
+          data: {
+            labels: ['مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر'],
+            datasets: [
+              {
+                label: 'المبيعات',
+                data: [120000, 145000, 180000, 165000, 210000, 245000],
+                borderColor: '#3b82f6',
+                backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                tension: 0.35,
+                fill: true,
+                borderWidth: 3
+              },
+              {
+                label: 'تكلفة البضاعة المباعة (COGS)',
+                data: [72000, 87000, 108000, 99000, 126000, 147000],
+                borderColor: '#8b5cf6',
+                backgroundColor: 'rgba(139, 92, 246, 0.08)',
+                tension: 0.35,
+                fill: true,
+                borderWidth: 2.5
+              },
+              {
+                label: 'المشتريات',
+                data: [90000, 110000, 95000, 130000, 115000, 140000],
+                borderColor: '#10b981',
+                backgroundColor: 'transparent',
+                borderDash: [5, 5],
+                tension: 0.35,
+                borderWidth: 2.5
+              }
+            ]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: false },
+              tooltip: {
+                callbacks: {
+                  label: (ctx) => `${ctx.dataset.label}: ${formatMoney(ctx.raw)}`
+                }
+              }
+            },
+            scales: {
+              y: {
+                grid: { color: 'rgba(148, 163, 184, 0.15)' },
+                ticks: { callback: v => (v / 1000) + 'k' }
+              },
+              x: { grid: { display: false } }
+            }
+          }
+        });
+      }
+
+      // 2. Doughnut Chart: Distribution by Nature
+      const ctx2 = document.getElementById('natureDistributionChart');
+      if (ctx2) {
+        natureChart = new Chart(ctx2, {
+          type: 'doughnut',
+          data: {
+            labels: ['مبيعات', 'مشتريات', 'تكلفة (COGS)', 'مخزون وتسويات', 'مرتجعات'],
+            datasets: [{
+              data: [
+                allEntries.filter(e => e.type === 'sales').length,
+                allEntries.filter(e => e.type === 'purchases').length,
+                allEntries.filter(e => e.type === 'cogs').length,
+                allEntries.filter(e => e.type === 'inventory').length,
+                allEntries.filter(e => e.type === 'returns').length
+              ],
+              backgroundColor: ['#3b82f6', '#10b981', '#8b5cf6', '#06b6d4', '#ef4444'],
+              borderWidth: 0
+            }]
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            cutout: '68%'
+          }
+        });
+      }
+    }
+
+    // --- Export CSV Logic ---
+    function exportEntriesToCSV() {
+      let csv = "\uFEFFرقم القيد,التاريخ,نوع العملية,البيان,الطرف المدين,الطرف الدائن,المبلغ,الحالة\n";
+      allEntries.forEach(e => {
+        csv += `"${e.id}","${e.date}","${e.type}","${e.desc.replace(/"/g, '""')}","${e.debitAcc}","${e.creditAcc}","${e.amount}","${e.status}"\n`;
+      });
+
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `قيود_نظام_ERP_${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }
+
+    // --- Refresh All Views on State Change ---
+    function refreshAllViews() {
+      updateKPIs();
+      renderMainTable(currentFilterState, document.getElementById('searchInput').value);
+      renderSectionTable('sales', 'salesEntriesTableContainer');
+      renderSectionTable('purchases', 'purchasesEntriesTableContainer');
+      renderSectionTable('returns', 'returnsEntriesTableContainer');
+      renderSectionTable('inventory', 'inventoryEntriesTableContainer');
+      renderTrialBalance();
+      runCOGSCalculator();
+      generateSimulatedJournal();
+
+      if (natureChart) {
+        natureChart.data.datasets[0].data = [
+          allEntries.filter(e => e.type === 'sales').length,
+          allEntries.filter(e => e.type === 'purchases').length,
+          allEntries.filter(e => e.type === 'cogs').length,
+          allEntries.filter(e => e.type === 'inventory').length,
+          allEntries.filter(e => e.type === 'returns').length
+        ];
+        natureChart.update();
+      }
+      lucide.createIcons();
+    }
+
+    // --- Dark Mode Toggle ---
+    function toggleDarkMode() {
+      document.documentElement.classList.toggle('dark');
+      localStorage.setItem('theme', document.documentElement.classList.contains('dark') ? 'dark' : 'light');
+    }
+
+    // --- Sidebar Mobile Toggle ---
+    document.getElementById('openSidebarBtn').addEventListener('click', () => {
+      const s = document.getElementById('sidebar');
+      s.classList.remove('hidden');
+      s.classList.add('flex');
+    });
+
+    document.getElementById('closeSidebarBtn').addEventListener('click', () => {
+      const s = document.getElementById('sidebar');
+      s.classList.add('hidden');
+      s.classList.remove('flex');
+    });
+
+    // --- Live Search Input ---
+    document.getElementById('searchInput').addEventListener('input', (e) => {
+      renderMainTable(currentFilterState, e.target.value);
+    });
+
+    // --- App Boot ---
+    window.addEventListener('DOMContentLoaded', () => {
+      if (localStorage.getItem('theme') === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        document.documentElement.classList.add('dark');
+      }
+      initCharts();
+      refreshAllViews();
+      lucide.createIcons();
+    });
+  </script>
+</body>
+</html>
